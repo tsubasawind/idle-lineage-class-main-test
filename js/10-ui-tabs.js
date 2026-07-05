@@ -9,8 +9,30 @@ function refreshClassicSkillBookOnly() {
 function classicSkillChooseTier(tier) {
     classicSkillBookState.mode = 'general';
     classicSkillBookState.tier = Math.max(1, Math.min(10, parseInt(tier, 10) || 1));
-    classicSkillBookState.page = 0;
     refreshClassicSkillBookOnly();
+    requestAnimationFrame(function(){
+        let view = document.querySelector('#tab-skill .classic-skill-grid-scroll');
+        let first = document.querySelector(`#tab-skill .classic-skill-cell[data-tier="${classicSkillBookState.tier}"]`);
+        if (view && first) view.scrollTop = Math.max(0, first.offsetTop);
+    });
+}
+function classicSkillSelectTier(tier) {
+    tier = Math.max(1, Math.min(10, parseInt(tier, 10) || 1));
+    classicSkillBookState.tier = tier;
+    let strip = document.querySelector('#tab-skill .classic-skill-tier-strip');
+    if (strip) strip.style.backgroundImage = `url('assets/ui/skill-level/${538 + tier}.png')`;
+    let heading = document.querySelector('#tab-skill .classic-skill-heading');
+    if (heading && classicSkillBookState.mode === 'general') heading.textContent = tier + '階一般魔法';
+}
+function classicSkillSyncTierFromScroll(view) {
+    if (!view || classicSkillBookState.mode !== 'general') return;
+    let cells = view.querySelectorAll('.classic-skill-cell[data-tier]');
+    let line = view.scrollTop + Math.max(4, view.clientHeight * 0.12), tier = classicSkillBookState.tier;
+    for (let cell of cells) {
+        if (cell.offsetTop <= line) tier = parseInt(cell.dataset.tier, 10) || tier;
+        else break;
+    }
+    if (tier !== classicSkillBookState.tier) classicSkillSelectTier(tier);
 }
 function classicSkillChooseMode(mode) {
     classicSkillBookState.mode = mode;
@@ -48,16 +70,22 @@ function renderClassicSkillBook(sDiv) {
     if (stateBook.mode === 'class' && !classSkills.length) stateBook.mode = 'general';
     if (stateBook.mode === 'equipment' && !granted.length) stateBook.mode = 'general';
 
-    let list;
-    if (stateBook.mode === 'class') list = classSkills;
-    else if (stateBook.mode === 'equipment') list = granted;
-    else list = accessibleGeneral.filter(id => +DB.skills[id].tier === stateBook.tier);
-
-    let pageCount = Math.max(1, Math.ceil(list.length / 32));
-    if (stateBook.page >= pageCount) stateBook.page = pageCount - 1;
-    list = list.slice(stateBook.page * 32, stateBook.page * 32 + 32);
     let tierAvailable = new Set(accessibleGeneral.map(id => +DB.skills[id].tier));
-    let cells = list.map(id => {
+    let list = [];
+    if (stateBook.mode === 'class') list = classSkills.map(id => ({ id:id, tier:null }));
+    else if (stateBook.mode === 'equipment') list = granted.map(id => ({ id:id, tier:null }));
+    else {
+        Array.from(tierAvailable).sort((a,b) => a-b).forEach(tier => {
+            let group = accessibleGeneral.filter(id => +DB.skills[id].tier === tier).map(id => ({ id:id, tier:tier }));
+            while (group.length % 4) group.push({ id:null, tier:tier });
+            list.push.apply(list, group);
+        });
+    }
+    let minimumCells = 32;
+    while (list.length < minimumCells) list.push({ id:null, tier:null });
+    let cells = list.map(entry => {
+        let id = entry.id;
+        if (!id) return '<div class="classic-skill-cell classic-skill-empty"></div>';
         let sk = DB.skills[id];
         let learned = (player.skills || []).includes(id);
         let grantedSkill = granted.includes(id);
@@ -70,10 +98,11 @@ function renderClassicSkillBook(sDiv) {
         if (sk.reqEle && player.elfEle !== sk.reqEle) status += '・需' + ({fire:'火',water:'水',wind:'風',earth:'地'}[sk.reqEle] || sk.reqEle) + '屬性';
         let title = `${sk.n}\n${stateBook.mode === 'general' ? sk.tier + '階一般魔法' : (stateBook.mode === 'equipment' ? '裝備魔法' : classLabel)}\n${status}`;
         let img = `<img src="${getIconUrl(sk, true)}" onerror="this.style.display='none';" alt="${sk.n}">`;
-        if (learned && usable && sk.type === 'manual') return `<button class="classic-skill-cell${dim}" data-tip-skill="${id}" title="${title}" onclick="manualCast('${id}')">${img}</button>`;
-        return `<div class="classic-skill-cell${dim}" data-tip-skill="${id}" title="${title}">${img}${!learned ? '<span class="classic-skill-lock">◆</span>' : ''}</div>`;
+        let tierAttr = entry.tier ? ` data-tier="${entry.tier}"` : '';
+        let select = entry.tier ? `classicSkillSelectTier(${entry.tier});` : '';
+        if (learned && usable && sk.type === 'manual') return `<button class="classic-skill-cell${dim}"${tierAttr} data-tip-skill="${id}" title="${title}" onclick="${select}manualCast('${id}')">${img}</button>`;
+        return `<div class="classic-skill-cell${dim}"${tierAttr} data-tip-skill="${id}" title="${title}" onclick="${select}">${img}${!learned ? '<span class="classic-skill-lock">◆</span>' : ''}</div>`;
     }).join('');
-    for (let i = list.length; i < 32; i++) cells += '<div class="classic-skill-cell classic-skill-empty"></div>';
 
     let tierButtons = '';
     for (let t = 1; t <= 10; t++) tierButtons += `<button class="classic-skill-tier-hit tier-${t}${tierAvailable.has(t) ? '' : ' disabled'}" ${tierAvailable.has(t) ? `onclick="classicSkillChooseTier(${t})"` : 'disabled'} title="${t}階一般魔法"></button>`;
@@ -82,12 +111,11 @@ function renderClassicSkillBook(sDiv) {
         + (classSkills.length ? `<button class="${stateBook.mode === 'class' ? 'active' : ''}" onclick="classicSkillChooseMode('class')">${player.cls === 'elf' ? '精靈' : '職業'}</button>` : '')
         + (granted.length ? `<button class="${stateBook.mode === 'equipment' ? 'active' : ''}" onclick="classicSkillChooseMode('equipment')">裝備</button>` : '');
     let heading = stateBook.mode === 'general' ? `${stateBook.tier}階一般魔法` : (stateBook.mode === 'equipment' ? '裝備授予魔法' : classLabel);
-    let pager = pageCount > 1 ? `<div class="classic-skill-pager"><button onclick="classicSkillTurnPage(-1)" ${stateBook.page <= 0 ? 'disabled' : ''}>◀</button><span>${stateBook.page + 1}/${pageCount}</span><button onclick="classicSkillTurnPage(1)" ${stateBook.page + 1 >= pageCount ? 'disabled' : ''}>▶</button></div>` : '';
     sDiv.innerHTML = `<div class="classic-skill-window">
         <div class="classic-skill-heading">${heading}</div>
         <div class="classic-skill-mode">${modeButtons}</div>
         <div class="classic-skill-tier-strip" style="background-image:url('assets/ui/skill-level/${sprite}.png')">${tierButtons}</div>
-        <div class="classic-skill-grid">${cells}</div>${pager}
+        <div class="classic-skill-grid-scroll" onscroll="classicSkillSyncTierFromScroll(this)"><div class="classic-skill-grid">${cells}</div></div>
     </div>`;
 }
 function _initTabGuard() {
