@@ -1,20 +1,25 @@
 let _tabPointerDown = false, _tabRebuildPending = false, _tabThrottleTimer = null;
 const TAB_REBUILD_THROTTLE_MS = 250;
 let classicSkillBookState = { mode: 'general', tier: 1, page: 0 };
+function refreshClassicSkillBookOnly() {
+    let div = document.getElementById('tab-skill');
+    if (div) renderClassicSkillBook(div);
+    if (typeof updateSummonLock === 'function') updateSummonLock();
+}
 function classicSkillChooseTier(tier) {
     classicSkillBookState.mode = 'general';
     classicSkillBookState.tier = Math.max(1, Math.min(10, parseInt(tier, 10) || 1));
     classicSkillBookState.page = 0;
-    renderTabs(true);
+    refreshClassicSkillBookOnly();
 }
 function classicSkillChooseMode(mode) {
     classicSkillBookState.mode = mode;
     classicSkillBookState.page = 0;
-    renderTabs(true);
+    refreshClassicSkillBookOnly();
 }
 function classicSkillTurnPage(dir) {
     classicSkillBookState.page = Math.max(0, classicSkillBookState.page + dir);
-    renderTabs(true);
+    refreshClassicSkillBookOnly();
 }
 function classicSkillClassLabel() {
     return ({ knight:'騎士技術', mage:'法師魔法', elf:'精靈魔法', dark:'黑妖魔法', illusion:'幻術魔法', dragon:'龍騎魔法', warrior:'戰士技能', royal:'王族魔法' })[player.cls] || '職業技能';

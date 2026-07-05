@@ -493,12 +493,12 @@ button.classic-skill-cell { cursor:pointer; }
 .classic-skill-unavailable img { opacity:.42; filter:grayscale(.8) brightness(.7); }
 .classic-skill-lock { position:absolute; right:8%; bottom:5%; color:#796f61; font-size:clamp(6px,.7vw,10px); text-shadow:0 1px 2px #000; }
 .classic-skill-tier-strip {
-    position:absolute; z-index:5; left:18.05%; top:5.2%; width:3.2%; height:82.1%;
+    position:absolute; z-index:7; left:17.55%; top:5.2%; width:4.2%; height:82.1%;
     background-position:center; background-size:100% 100%; background-repeat:no-repeat;
 }
-.classic-skill-tier-hit { position:absolute; left:-18%; width:136%; height:10%; border:0; padding:0; background:transparent; }
+.classic-skill-tier-hit { position:absolute; left:-110%; width:320%; height:10%; border:0; padding:0; background:transparent; }
 .classic-skill-tier-hit:not(.disabled) { cursor:pointer; }
-.classic-skill-tier-hit:not(.disabled):hover { background:rgba(255,220,115,.20); box-shadow:0 0 7px #e2b85b; }
+.classic-skill-tier-hit:not(.disabled):hover { background:rgba(255,220,115,.24); box-shadow:inset 0 0 5px #e2b85b,0 0 7px #e2b85b; }
 .classic-skill-tier-hit.disabled { cursor:not-allowed; opacity:.35; }
 .classic-skill-tier-hit.tier-1{top:0}.classic-skill-tier-hit.tier-2{top:10%}.classic-skill-tier-hit.tier-3{top:20%}.classic-skill-tier-hit.tier-4{top:30%}.classic-skill-tier-hit.tier-5{top:40%}
 .classic-skill-tier-hit.tier-6{top:50%}.classic-skill-tier-hit.tier-7{top:60%}.classic-skill-tier-hit.tier-8{top:70%}.classic-skill-tier-hit.tier-9{top:80%}.classic-skill-tier-hit.tier-10{top:90%}
