@@ -1,5 +1,90 @@
 let _tabPointerDown = false, _tabRebuildPending = false, _tabThrottleTimer = null;
 const TAB_REBUILD_THROTTLE_MS = 250;
+let classicSkillBookState = { mode: 'general', tier: 1, page: 0 };
+function classicSkillChooseTier(tier) {
+    classicSkillBookState.mode = 'general';
+    classicSkillBookState.tier = Math.max(1, Math.min(10, parseInt(tier, 10) || 1));
+    classicSkillBookState.page = 0;
+    renderTabs(true);
+}
+function classicSkillChooseMode(mode) {
+    classicSkillBookState.mode = mode;
+    classicSkillBookState.page = 0;
+    renderTabs(true);
+}
+function classicSkillTurnPage(dir) {
+    classicSkillBookState.page = Math.max(0, classicSkillBookState.page + dir);
+    renderTabs(true);
+}
+function classicSkillClassLabel() {
+    return ({ knight:'騎士技術', mage:'法師魔法', elf:'精靈魔法', dark:'黑妖魔法', illusion:'幻術魔法', dragon:'龍騎魔法', warrior:'戰士技能', royal:'王族魔法' })[player.cls] || '職業技能';
+}
+function classicSkillIsClassSkill(sk) {
+    if (!sk || sk.procOnly) return false;
+    if (player.cls === 'knight') return sk.reqK !== undefined && sk.reqM === undefined;
+    if (player.cls === 'elf') return sk.reqE !== undefined && sk.reqM === undefined;
+    if (player.cls === 'dark') return sk.reqD !== undefined;
+    if (player.cls === 'illusion') return sk.reqI !== undefined && sk.reqM === undefined;
+    if (player.cls === 'dragon') return sk.reqDk !== undefined && sk.reqM === undefined;
+    if (player.cls === 'warrior') return sk.reqW !== undefined;
+    if (player.cls === 'royal') return sk.reqRoy !== undefined;
+    return false;
+}
+function renderClassicSkillBook(sDiv) {
+    let stateBook = classicSkillBookState;
+    let allIds = Object.keys(DB.skills).filter(id => DB.skills[id] && !DB.skills[id].procOnly && id.indexOf('sk_helm_') !== 0);
+    let accessibleGeneral = allIds.filter(id => {
+        let sk = DB.skills[id];
+        return sk.reqM !== undefined && skillReqLv(sk, id) !== undefined;
+    });
+    let classSkills = allIds.filter(id => classicSkillIsClassSkill(DB.skills[id]));
+    let granted = (player.grantedSkills || []).filter(id => DB.skills[id]);
+    let classLabel = classicSkillClassLabel();
+    if (stateBook.mode === 'class' && !classSkills.length) stateBook.mode = 'general';
+    if (stateBook.mode === 'equipment' && !granted.length) stateBook.mode = 'general';
+
+    let list;
+    if (stateBook.mode === 'class') list = classSkills;
+    else if (stateBook.mode === 'equipment') list = granted;
+    else list = accessibleGeneral.filter(id => +DB.skills[id].tier === stateBook.tier);
+
+    let pageCount = Math.max(1, Math.ceil(list.length / 32));
+    if (stateBook.page >= pageCount) stateBook.page = pageCount - 1;
+    list = list.slice(stateBook.page * 32, stateBook.page * 32 + 32);
+    let tierAvailable = new Set(accessibleGeneral.map(id => +DB.skills[id].tier));
+    let cells = list.map(id => {
+        let sk = DB.skills[id];
+        let learned = (player.skills || []).includes(id);
+        let grantedSkill = granted.includes(id);
+        let needLv = grantedSkill ? 0 : skillReqLv(sk, id);
+        let elementOk = !sk.reqEle || player.elfEle === sk.reqEle;
+        let elementChosen = !sk.reqEleAny || !!player.elfEle;
+        let usable = learned && elementOk && elementChosen && (grantedSkill || needLv === undefined || player.lv >= needLv);
+        let dim = learned ? (usable ? '' : ' classic-skill-unavailable') : ' classic-skill-unlearned';
+        let status = grantedSkill ? '裝備授予' : (learned ? (usable ? '已學習' : '目前無法使用') : (needLv === undefined ? '職業不符' : '未學習・需 Lv' + needLv));
+        if (sk.reqEle && player.elfEle !== sk.reqEle) status += '・需' + ({fire:'火',water:'水',wind:'風',earth:'地'}[sk.reqEle] || sk.reqEle) + '屬性';
+        let title = `${sk.n}\n${stateBook.mode === 'general' ? sk.tier + '階一般魔法' : (stateBook.mode === 'equipment' ? '裝備魔法' : classLabel)}\n${status}`;
+        let img = `<img src="${getIconUrl(sk, true)}" onerror="this.style.display='none';" alt="${sk.n}">`;
+        if (learned && usable && sk.type === 'manual') return `<button class="classic-skill-cell${dim}" data-tip-skill="${id}" title="${title}" onclick="manualCast('${id}')">${img}</button>`;
+        return `<div class="classic-skill-cell${dim}" data-tip-skill="${id}" title="${title}">${img}${!learned ? '<span class="classic-skill-lock">◆</span>' : ''}</div>`;
+    }).join('');
+    for (let i = list.length; i < 32; i++) cells += '<div class="classic-skill-cell classic-skill-empty"></div>';
+
+    let tierButtons = '';
+    for (let t = 1; t <= 10; t++) tierButtons += `<button class="classic-skill-tier-hit tier-${t}${tierAvailable.has(t) ? '' : ' disabled'}" ${tierAvailable.has(t) ? `onclick="classicSkillChooseTier(${t})"` : 'disabled'} title="${t}階一般魔法"></button>`;
+    let sprite = 538 + stateBook.tier;
+    let modeButtons = `<button class="${stateBook.mode === 'general' ? 'active' : ''}" onclick="classicSkillChooseMode('general')">一般</button>`
+        + (classSkills.length ? `<button class="${stateBook.mode === 'class' ? 'active' : ''}" onclick="classicSkillChooseMode('class')">${player.cls === 'elf' ? '精靈' : '職業'}</button>` : '')
+        + (granted.length ? `<button class="${stateBook.mode === 'equipment' ? 'active' : ''}" onclick="classicSkillChooseMode('equipment')">裝備</button>` : '');
+    let heading = stateBook.mode === 'general' ? `${stateBook.tier}階一般魔法` : (stateBook.mode === 'equipment' ? '裝備授予魔法' : classLabel);
+    let pager = pageCount > 1 ? `<div class="classic-skill-pager"><button onclick="classicSkillTurnPage(-1)" ${stateBook.page <= 0 ? 'disabled' : ''}>◀</button><span>${stateBook.page + 1}/${pageCount}</span><button onclick="classicSkillTurnPage(1)" ${stateBook.page + 1 >= pageCount ? 'disabled' : ''}>▶</button></div>` : '';
+    sDiv.innerHTML = `<div class="classic-skill-window">
+        <div class="classic-skill-heading">${heading}</div>
+        <div class="classic-skill-mode">${modeButtons}</div>
+        <div class="classic-skill-tier-strip" style="background-image:url('assets/ui/skill-level/${sprite}.png')">${tierButtons}</div>
+        <div class="classic-skill-grid">${cells}</div>${pager}
+    </div>`;
+}
 function _initTabGuard() {
     let panel = document.getElementById('tab-content-panel');
     if (!panel || panel._tabGuardInit) return;
@@ -22,7 +107,7 @@ function renderTabs(force) {
         let inv = player.inv.map(i => itemSig(i) + '.' + (i.cnt||1) + '.' + (i.lock?1:0) + '.' + (i.junk?1:0)).join(';');   // 🔧 架構#3：改用統一簽章（修正先前祝福/詛咒同被壓成 1 的重繪遺漏）
         let eq = Object.keys(player.eq).map(k => { let e = player.eq[k]; return e ? `${k}:${itemSig(e)}.${e.cnt||0}` : k+':'; }).join(',');   // 🔧 補上先前缺漏的 attr / anc
         let dd = player.d;
-        return `${inv}#${eq}#${(player.skills||[]).join(',')}#${(player.grantedSkills||[]).join(',')}#${player.cls}#${player.lv}#${player.elfEle||''}#${dd.str+dd.dex+dd.con+dd.int+dd.wis}`;
+        return `${inv}#${eq}#${(player.skills||[]).join(',')}#${(player.grantedSkills||[]).join(',')}#${player.cls}#${player.lv}#${player.elfEle||''}#${player.mastery||''}#${dd.str+dd.dex+dd.con+dd.int+dd.wis}`;
     })();
     if(!force && _sig === renderTabs._sig) return;
     renderTabs._sig = _sig;
@@ -176,72 +261,8 @@ player.inv.forEach(i => {
     // 1.8 物品介面：保留原清單事件與功能，只把內容搬入八格皮膚的可捲動區。
     [eDiv,wDiv,aDiv,iDiv].forEach(decorateClassicInventoryTab);
     
-    let sDiv = document.getElementById('tab-skill'); sDiv.innerHTML = '';
-    let sortedSkills = [...player.skills].filter(s => DB.skills[s] && !DB.skills[s].procOnly).sort((a,b) => (DB.skills[a].tier||0) - (DB.skills[b].tier||0));   // 🏛️ 過濾 procOnly（純武器proc技能如惡魔之吻：不顯示於技能格）
-
-    // 🎨 已學技能：固定大小 ICON 排版；階級文字置左、4 欄格(至少 4×2)置右
-    // 🔮 依「學習來源」分區：魔法書／技術書／精靈水晶／黑暗精靈水晶 各自獨立，即使同階也分開；裝備授予(sk_helm_*)歸「裝備授予」
-    if (!renderTabs._skillSrc) {   // 由 skillbk 物品名稱前綴建表（一次性快取）：sk → 來源組名（split('(') 避免「黑暗精靈水晶」⊃「精靈水晶」誤判）
-        renderTabs._skillSrc = {};
-        for (let k in DB.items) { let it = DB.items[k]; if (it && it.type === 'skillbk' && it.sk) renderTabs._skillSrc[it.sk] = String(it.n || '').split('(')[0]; }
-    }
-    let _SKILL_SRC = renderTabs._skillSrc;
-    const _CELL = 'width:46px;height:46px;';
-
-    // 分組：來源 → 階級 → [技能id]
-    let _grp = {};
-    sortedSkills.forEach(sid => {
-        let sk = DB.skills[sid]; if (!sk) return;
-        let src = sk.cat ? ({ blood: '熱血', rage: '憤怒', endure: '忍耐', royal: '王族魔法' }[sk.cat] || sk.cat) : (_SKILL_SRC[sid] || '裝備授予');   // ⚔️ 戰士技能依 cat 分熱血/憤怒/忍耐；👑 王族 cat='royal'→王族魔法
-        let tier = (sk.tier === undefined || sk.tier === null || sk.tier === '') ? '_' : sk.tier;
-        (_grp[src] = _grp[src] || {});
-        (_grp[src][tier] = _grp[src][tier] || []).push(sid);
-    });
-    // 來源顯示順序：固定序（不分職業）魔法書→精靈水晶→黑暗精靈水晶→技術書→記憶水晶(幻術士)→龍騎士書板(龍騎士)，裝備授予最後
-    let _srcOrder = ['魔法書', '精靈水晶', '黑暗精靈水晶', '技術書', '記憶水晶', '龍騎士書板', '王族魔法', '熱血', '憤怒', '忍耐'];
-    // 🛡️ 安全網：_grp 內若有 _srcOrder 未涵蓋的來源（日後新增任何技能書類型），補在「裝備授予」之前，永不漏顯（修復幻術士記憶水晶/龍騎士書板技能不顯示）
-    let _renderOrder = _srcOrder.concat(Object.keys(_grp).filter(s => _srcOrder.indexOf(s) === -1 && s !== '裝備授予')).concat(['裝備授予']);
-
-    let _renderCell = (sid) => {
-        let sk = DB.skills[sid];
-        let isAvail = true;
-        let __granted = player.grantedSkills && player.grantedSkills.includes(sid);
-        let needLv = skillReqLv(sk, sid);   // 🏅 集中化：含魔導精通特例
-        if(!__granted && (needLv === undefined || player.lv < needLv)) isAvail = false;
-        if(!__granted && sk.reqEle && player.elfEle !== sk.reqEle) isAvail = false;
-        if(!__granted && sk.reqEleAny && !player.elfEle) isAvail = false;
-        let imgUrl = getIconUrl(sk, true);
-        let _bd = !isAvail ? 'border-slate-600 opacity-50'
-            : (sk.type === 'manual' ? 'border-amber-500'
-            : (sk.type === 'atk' ? 'border-cyan-500'
-            : (sk.type === 'heal' ? 'border-green-500' : 'border-purple-500')));
-        let _img = `<img src="${imgUrl}" onerror="this.style.display='none';" class="object-contain pointer-events-none" style="width:36px;height:36px;">`;
-        if(sk.type === 'manual') {
-            // 手動施放技能：ICON 本身可點擊施放（右下角「施」標記）；保留 id/data-unavail 供 updateSummonLock 控制(迷魅)
-            return `<button id="manual-btn-${sid}" data-tip-skill="${sid}" data-unavail="${isAvail?'0':'1'}" onclick="manualCast('${sid}')" ${isAvail?'':'disabled'} title="${sk.n}"
-                class="tip-host relative flex items-center justify-center rounded border ${_bd} bg-slate-900/40 ${isAvail?'hover:bg-amber-900/40 cursor-pointer':'cursor-not-allowed'}" style="${_CELL}">${_img}<span class="absolute right-0 -bottom-px text-[9px] leading-none font-bold text-amber-300 pointer-events-none">施</span></button>`;
-        }
-        return `<div data-tip-skill="${sid}" title="${sk.n}" class="tip-host flex items-center justify-center rounded border ${_bd} bg-slate-900/40" style="${_CELL}">${_img}</div>`;
-    };
-
-    _renderOrder.forEach(src => {
-        let byTier = _grp[src]; if (!byTier) return;
-        let _tiers = Object.keys(byTier).sort((a,b) => (a === '_' ? 999 : +a) - (b === '_' ? 999 : +b));
-        _tiers.forEach(t => {
-            let list = byTier[t];
-            let _tierLabel = (t === '_') ? '其他' : (t + ' 階');
-            let cells = list.map(_renderCell).join('');
-            // 補空白格至 4 的倍數、且至少 8 格（4×2），維持 4×2 區塊版型
-            let _pad = Math.max(8, Math.ceil(list.length / 4) * 4);
-            for(let i = list.length; i < _pad; i++) cells += `<div class="rounded border border-slate-800/40 bg-slate-900/20" style="${_CELL}"></div>`;
-            let section = document.createElement('div');
-            // 階級文字置左、4×2 ICON 置右；區塊間以細分隔線區隔（首區不畫上邊線）
-            let _sepCls = sDiv.children.length ? ' border-t border-slate-700/50' : '';
-            section.className = 'flex items-center gap-2 py-2' + _sepCls;
-            section.innerHTML = `<div class="flex flex-col justify-center shrink-0" style="width:82px;"><div class="text-sm font-bold text-slate-300 leading-tight">${_tierLabel}</div><div class="text-[11px] text-slate-500 leading-tight">${src}</div></div><div class="grid gap-1.5 shrink-0" style="grid-template-columns:repeat(4,46px);">${cells}</div>`;
-            sDiv.appendChild(section);
-        });
-    });
+    let sDiv = document.getElementById('tab-skill');
+    renderClassicSkillBook(sDiv);
     // 還原各分頁捲動位置
     ['tab-items','tab-weapons','tab-armors','tab-equip','tab-skill'].forEach(id => { let el = document.getElementById(id); if(el && _scroll[id] != null) { let sc=el.querySelector('.classic-inventory-viewport'); if(sc)sc.scrollTop=_scroll[id]; else el.scrollTop=_scroll[id]; } });
     updateSummonLock();

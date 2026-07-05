@@ -462,5 +462,59 @@
 #login-meta-layer { position:absolute; z-index:3; left:4.2%; top:41.5%; width:28.7%; color:#d8c8a2; text-shadow:0 1px 3px #000; }
 #login-version { margin-bottom:3%; font-size:clamp(12px,1.05vw,18px) !important; font-weight:700; color:#f2d77f; }
 #login-disclaimer { max-width:none !important; padding:0 !important; margin:0 !important; font-size:clamp(9px,.72vw,13px) !important; line-height:1.48; color:#eee2c7; }
+
+/* ===== 1.8 原版風格技能魔法視窗 ===== */
+#tab-skill { padding:0 !important; overflow:auto !important; align-items:center; justify-content:flex-start; background:#08090d; }
+.classic-skill-window {
+    position:relative; flex:0 0 auto; width:min(100%,510px); aspect-ratio:1023/1537;
+    margin:0 auto; overflow:hidden; user-select:none;
+    background:url('../assets/ui/skill-window-1.8.png') center/100% 100% no-repeat;
+}
+.classic-skill-heading {
+    position:absolute; z-index:4; left:23.4%; top:2.2%; width:61.8%; height:2.6%;
+    display:flex; align-items:center; justify-content:center; color:#f3df9d;
+    font-weight:700; font-size:clamp(9px,1vw,14px); text-shadow:0 1px 3px #000,0 0 4px #000;
+}
+.classic-skill-grid {
+    position:absolute; z-index:3; left:23.5%; top:5.35%; width:62.2%; height:81.65%;
+    display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(8,1fr);
+}
+.classic-skill-cell {
+    position:relative; display:flex; align-items:center; justify-content:center; padding:7%;
+    border:0; border-radius:0; background:transparent; color:#fff; min-width:0; min-height:0;
+}
+button.classic-skill-cell { cursor:pointer; }
+.classic-skill-cell img {
+    display:block; width:82%; height:82%; object-fit:contain; pointer-events:none;
+    filter:drop-shadow(0 1px 2px #000);
+}
+.classic-skill-cell:hover:not(.classic-skill-empty) { background:rgba(231,190,89,.13); box-shadow:inset 0 0 8px rgba(255,214,102,.55); }
+.classic-skill-unlearned img { opacity:.30; filter:grayscale(1) brightness(.75); }
+.classic-skill-unavailable img { opacity:.42; filter:grayscale(.8) brightness(.7); }
+.classic-skill-lock { position:absolute; right:8%; bottom:5%; color:#796f61; font-size:clamp(6px,.7vw,10px); text-shadow:0 1px 2px #000; }
+.classic-skill-tier-strip {
+    position:absolute; z-index:5; left:18.05%; top:5.2%; width:3.2%; height:82.1%;
+    background-position:center; background-size:100% 100%; background-repeat:no-repeat;
+}
+.classic-skill-tier-hit { position:absolute; left:-18%; width:136%; height:10%; border:0; padding:0; background:transparent; }
+.classic-skill-tier-hit:not(.disabled) { cursor:pointer; }
+.classic-skill-tier-hit:not(.disabled):hover { background:rgba(255,220,115,.20); box-shadow:0 0 7px #e2b85b; }
+.classic-skill-tier-hit.disabled { cursor:not-allowed; opacity:.35; }
+.classic-skill-tier-hit.tier-1{top:0}.classic-skill-tier-hit.tier-2{top:10%}.classic-skill-tier-hit.tier-3{top:20%}.classic-skill-tier-hit.tier-4{top:30%}.classic-skill-tier-hit.tier-5{top:40%}
+.classic-skill-tier-hit.tier-6{top:50%}.classic-skill-tier-hit.tier-7{top:60%}.classic-skill-tier-hit.tier-8{top:70%}.classic-skill-tier-hit.tier-9{top:80%}.classic-skill-tier-hit.tier-10{top:90%}
+.classic-skill-mode {
+    position:absolute; z-index:6; left:2.1%; top:28%; width:13.8%; display:flex; flex-direction:column; gap:6px;
+}
+.classic-skill-mode button {
+    border:1px solid #6c5529; border-radius:3px; padding:3px 1px; background:rgba(10,10,13,.82);
+    color:#a99d83; font-size:clamp(7px,.78vw,11px); font-weight:700; text-shadow:0 1px 2px #000;
+}
+.classic-skill-mode button:hover,.classic-skill-mode button.active { color:#ffe29a; border-color:#d8a94b; background:rgba(90,57,16,.82); box-shadow:0 0 6px rgba(238,183,73,.55); }
+.classic-skill-pager {
+    position:absolute; z-index:6; right:3.8%; bottom:3.2%; display:flex; align-items:center; gap:4px;
+    color:#ead89d; font-size:clamp(7px,.7vw,10px); text-shadow:0 1px 2px #000;
+}
+.classic-skill-pager button { color:#e7c46b; border:0; background:transparent; padding:1px 3px; }
+.classic-skill-pager button:disabled { color:#5e584d; cursor:default; }
 #slot-select-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,92vw); max-height:92vh; overflow:auto; margin:0 !important; padding:22px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
 #creation-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(1000px,96vw); max-height:96vh; overflow:auto; padding:20px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
