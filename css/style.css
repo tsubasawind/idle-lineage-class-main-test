@@ -522,5 +522,22 @@ button.classic-skill-cell { cursor:pointer; }
 }
 .classic-skill-pager button { color:#e7c46b; border:0; background:transparent; padding:1px 3px; }
 .classic-skill-pager button:disabled { color:#5e584d; cursor:default; }
+
+/* 📱 手機直向：viewport 固定設計寬 1180 時，CSS 高度會被手機長比例放大。
+   三欄改用桌機設計高度，保留寬度等比縮放；超出的內容由遊戲舞台捲動，不再拉長地圖與清單皮膚。 */
+@media (pointer: coarse) {
+    #app-stage { overflow:auto; overscroll-behavior:contain; }
+    #game-screen { align-items:flex-start; overflow:auto; }
+    #col-left,#col-center,#col-right {
+        height:920px;
+        max-height:calc(100vh - 32px);
+        max-height:calc(100dvh - 32px);
+        align-self:flex-start;
+    }
+    #col-left { overflow-y:auto; overflow-x:hidden; }
+    #col-center,#col-right { min-height:0; }
+    #tab-content-panel { min-height:0; }
+    .classic-inventory-viewport { background-size:100% 100%; }
+}
 #slot-select-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,92vw); max-height:92vh; overflow:auto; margin:0 !important; padding:22px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
 #creation-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(1000px,96vw); max-height:96vh; overflow:auto; padding:20px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
