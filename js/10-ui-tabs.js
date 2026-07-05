@@ -1,10 +1,25 @@
-let _tabPointerDown = false, _tabRebuildPending = false, _tabThrottleTimer = null;
+let _tabPointerDown = false, _tabWheelActive = false, _tabWheelTimer = null, _tabRebuildPending = false, _tabThrottleTimer = null;
 const TAB_REBUILD_THROTTLE_MS = 250;
+const TAB_WHEEL_IDLE_MS = 180;
 function _initTabGuard() {
     let panel = document.getElementById('tab-content-panel');
     if (!panel || panel._tabGuardInit) return;
     panel._tabGuardInit = true;
     panel.addEventListener('pointerdown', function(){ _tabPointerDown = true; });
+    // 狩獵掉落、箭矢消耗會要求重建背包。滾輪操作期間若直接替換 DOM，
+    // 瀏覽器會中斷慣性捲動，物品越多時越容易看起來像整頁卡住。
+    panel.addEventListener('wheel', function(){
+        _tabWheelActive = true;
+        if (_tabWheelTimer) clearTimeout(_tabWheelTimer);
+        _tabWheelTimer = setTimeout(function(){
+            _tabWheelTimer = null;
+            _tabWheelActive = false;
+            if (_tabRebuildPending) {
+                _tabRebuildPending = false;
+                renderTabs();
+            }
+        }, TAB_WHEEL_IDLE_MS);
+    }, { passive:true, capture:true });
     let _release = function(){ if (!_tabPointerDown) return; _tabPointerDown = false; if (_tabRebuildPending) { _tabRebuildPending = false; setTimeout(function(){ renderTabs(); }, 0); } };   // 放開後(讓 click 先觸發)再補一次重建
     document.addEventListener('pointerup', _release);
     document.addEventListener('pointercancel', _release);
@@ -130,7 +145,7 @@ function renderClassicSkillBook(sDiv) {
 function renderTabs(force) {
     if(state.ff) return; // 補跑期間不刷新畫面
     // 🚀 使用者正按住分頁面板(點擊中)：延後非強制重建到放開後，避免按鈕被重繪掉而點擊失效
-    if(!force && _tabPointerDown) { _tabRebuildPending = true; return; }
+    if(!force && (_tabPointerDown || _tabWheelActive)) { _tabRebuildPending = true; return; }
     // 🚀 戰鬥 tick 內的高頻變動(扣箭/耗肉)：合併成一次重建(節流 250ms)，降低狩獵卡頓；使用者操作(非 tick)維持即時回饋
     if(!force && state.inTick) { if(!_tabThrottleTimer) _tabThrottleTimer = setTimeout(function(){ _tabThrottleTimer = null; renderTabs(); }, TAB_REBUILD_THROTTLE_MS); return; }
     if(_tabThrottleTimer) { clearTimeout(_tabThrottleTimer); _tabThrottleTimer = null; }
