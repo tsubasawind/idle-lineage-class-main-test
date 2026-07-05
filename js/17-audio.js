@@ -314,7 +314,7 @@ var TOWN_BGM_LIST = [
 var BGM_TRACKS = { title: 'title', create: 'create', town: 'town', battle: 'battle', boss: 'boss' };
 TOWN_BGM_LIST.forEach(function (id) { BGM_TRACKS[id] = id; });   // 各專屬城鎮：scene=id、檔=assets/bgm/<id>.<ext>
 var _TOWN_BGM = {}; TOWN_BGM_LIST.forEach(function (id) { _TOWN_BGM[id] = 1; });
-var _bgmUrl = {}, _bgmPreload = {}, _bgmEls = [null, null], _bgmActive = -1, _bgmScene = null, _bgmPendingScene = null, _bgmFadeTimer = null, _bgmInited = false;
+var _bgmUrl = {}, _bgmEls = [null, null], _bgmActive = -1, _bgmScene = null, _bgmFadeTimer = null, _bgmInited = false;
 
 function _bgmLoadCfg() {
     try {
@@ -325,15 +325,17 @@ function _bgmLoadCfg() {
 function _bgmSaveCfg() { try { if (typeof _lsSet === 'function') _lsSet('fb5_bgm', JSON.stringify(_bgmCfg)); } catch (e) {} }
 function _bgmTargetVol() { return Math.max(0, Math.min(1, _bgmCfg.vol / 100)); }
 
-// BGM 素材皆為 mp3：初始化時立刻記住路徑並預載，避免等待 canplay 後才允許首次播放。
+// 預解析各場景的實際 URL（依序試 mp3→ogg→wav）；缺檔→_bgmUrl[scene]=null
 function _bgmResolve(scene, file) {
-    var url = 'assets/bgm/' + file + '.mp3';
-    _bgmUrl[scene] = url;
-    var probe = new Audio();
-    probe.preload = scene === 'title' ? 'auto' : 'none';
-    probe.src = url;
-    _bgmPreload[scene] = probe;
-    if (scene === 'title') { try { probe.load(); } catch (e) {} }
+    var exts = ['mp3', 'ogg', 'wav'], i = 0;
+    (function tryNext() {
+        if (i >= exts.length) { _bgmUrl[scene] = null; return; }
+        var url = 'assets/bgm/' + file + '.' + exts[i++];
+        var probe = new Audio(); probe.preload = 'metadata';
+        probe.addEventListener('canplay', function () { _bgmUrl[scene] = url; }, { once: true });
+        probe.addEventListener('error', function () { tryNext(); }, { once: true });
+        probe.src = url; try { probe.load(); } catch (e) {}
+    })();
 }
 
 function _bgmIsCreateScreen() {   // 創角面板可見（#creation-panel 未 hidden）＝玩家正在創角
@@ -351,48 +353,34 @@ function _bgmDetectScene() {
 
 function _bgmCrossfade(oldEl, newEl) {
     if (_bgmFadeTimer) clearInterval(_bgmFadeTimer);
-    if (!oldEl) { if (newEl) newEl.volume = _bgmTargetVol(); return; }   // 首頁第一首直接到設定音量，不額外等待淡入
-    var target = _bgmTargetVol(), steps = 10, n = 0;
+    var target = _bgmTargetVol(), steps = 20, n = 0;
     _bgmFadeTimer = setInterval(function () {
         n++; var t = n / steps;
         if (newEl) newEl.volume = Math.max(0, Math.min(1, target * t));
         if (oldEl) oldEl.volume = Math.max(0, Math.min(1, target * (1 - t)));
         if (n >= steps) { clearInterval(_bgmFadeTimer); _bgmFadeTimer = null; if (oldEl) { try { oldEl.pause(); } catch (e) {} } }
-    }, 30);   // 10 步 × 30ms = 0.3 秒淡入淡出
+    }, 50);   // 20 步 × 50ms = 1 秒交叉淡化
 }
 
 function _bgmSwitch(scene) {
     if (!_bgmCfg.on) return;
-    if (scene === _bgmScene || scene === _bgmPendingScene) return;
+    if (scene === _bgmScene) return;
     var url = _bgmUrl[scene];
-    if (!url) return;
+    if (!url) return;   // 該場景無音檔（或尚未解析完）→不更新場景、保持目前曲目，下次輪詢再試
+    _bgmScene = scene;
     var newIdx = (_bgmActive === 0) ? 1 : 0;
     if (!_bgmEls[newIdx]) { var e0 = new Audio(); e0.loop = true; e0.preload = 'auto'; e0.volume = 0; _bgmEls[newIdx] = e0; }
     var nu = _bgmEls[newIdx], old = (_bgmActive >= 0) ? _bgmEls[_bgmActive] : null;
     try { if (!nu.src || nu.src.indexOf(url) === -1) nu.src = url; nu.currentTime = 0; } catch (e) {}
     nu.volume = 0;
-    _bgmPendingScene = scene;
-    var started = function () {
-        _bgmPendingScene = null;
-        _bgmScene = scene;
-        _bgmCrossfade(old, nu);
-        _bgmActive = newIdx;
-    };
-    var failed = function () {
-        _bgmPendingScene = null;
-        _bgmScene = null;   // 不鎖死；下一次使用者互動或輪詢可再次播放
-    };
-    try {
-        var p = nu.play();
-        if (p && p.then) p.then(started).catch(failed);
-        else started();
-    } catch (e) { failed(); }
+    var p = nu.play(); if (p && p.catch) p.catch(function () {});   // autoplay 未解鎖→忽略，下次輪詢再試
+    _bgmCrossfade(old, nu);
+    _bgmActive = newIdx;
 }
 function _bgmStopAll() {
     if (_bgmFadeTimer) { clearInterval(_bgmFadeTimer); _bgmFadeTimer = null; }
     for (var i = 0; i < 2; i++) { if (_bgmEls[i]) { try { _bgmEls[i].pause(); } catch (e) {} _bgmEls[i].volume = 0; } }
     _bgmActive = -1;
-    _bgmPendingScene = null;
 }
 function _bgmTick() { if (_bgmInited) { try { _bgmSwitch(_bgmDetectScene()); } catch (e) {} } }
 
@@ -407,14 +395,10 @@ function _bgmInit() {
     _bgmLoadCfg();
     Object.keys(BGM_TRACKS).forEach(function (s) { _bgmResolve(s, BGM_TRACKS[s]); });
     _bgmSyncUI();
-    setInterval(_bgmTick, 250);   // 快速偵測場景；成功播放後不會重複切換
-    var kick = function () {
-        var active = (_bgmActive >= 0) ? _bgmEls[_bgmActive] : null;
-        if (!active || active.paused) { _bgmScene = null; _bgmTick(); }
-    };   // 首次互動立即啟動；若先前遭瀏覽器阻擋，後續互動仍可重試
-    document.addEventListener('pointerdown', kick);
-    document.addEventListener('keydown', kick);
-    _bgmTick();   // 瀏覽器若允許自動播放便立即開始；若阻擋，首次互動會立刻重試
+    setInterval(_bgmTick, 1000);   // 自我輪詢場景（每秒；只在場景改變時切換）
+    var kick = function () { _bgmScene = null; _bgmTick(); };   // 首次互動立即啟動（autoplay 解鎖）
+    document.addEventListener('pointerdown', kick, { once: true });
+    document.addEventListener('keydown', kick, { once: true });
 }
 
 if (typeof document !== 'undefined') {
