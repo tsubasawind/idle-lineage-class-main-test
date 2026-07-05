@@ -330,10 +330,10 @@ function _bgmResolve(scene, file) {
     var url = 'assets/bgm/' + file + '.mp3';
     _bgmUrl[scene] = url;
     var probe = new Audio();
-    probe.preload = (scene === 'title' || scene === 'create') ? 'auto' : 'metadata';
+    probe.preload = scene === 'title' ? 'auto' : 'none';
     probe.src = url;
     _bgmPreload[scene] = probe;
-    try { probe.load(); } catch (e) {}
+    if (scene === 'title') { try { probe.load(); } catch (e) {} }
 }
 
 function _bgmIsCreateScreen() {   // 創角面板可見（#creation-panel 未 hidden）＝玩家正在創角

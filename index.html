@@ -28,7 +28,6 @@
     <title>放置天堂 - 以血為盟</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
     <link rel="preload" href="assets/bgm/title.mp3" as="audio" type="audio/mpeg">
-    <link rel="preload" href="assets/bgm/create.mp3" as="audio" type="audio/mpeg">
 
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/floating-ui.css?v=20260702g">
@@ -140,13 +139,22 @@
     <script>
       // 登入頁逐幀動畫：273.png～300.png，使用相對路徑，GitHub Pages 可直接部署。
       (function(){
-        var first=273,last=300,frame=first,lastAt=0,stepMs=90;
+        var first=273,last=300,frame=first,lastAt=0,stepMs=90,ready=false;
         var base='public/assets/login/';
-        for(var n=first;n<=last;n++){var p=new Image();p.src=base+n+'.png';}
+        // 首頁 BGM 優先；頁面載入完成後再逐張載入動畫，避免 28 張圖片同時與音樂搶讀取／解碼資源。
+        function preloadFrame(n){
+          if(n>last){ready=true;return;}
+          var p=new Image();
+          p.onload=p.onerror=function(){preloadFrame(n+1);};
+          p.src=base+n+'.png';
+        }
+        function beginPreload(){setTimeout(function(){preloadFrame(first+1);},500);}
+        if(document.readyState==='complete') beginPreload();
+        else window.addEventListener('load',beginPreload,{once:true});
         function animateLogin(now){
           var screen=document.getElementById('creation-screen');
           var img=document.getElementById('login-anim-image');
-          if(img&&screen&&!screen.classList.contains('hidden')&&now-lastAt>=stepMs){
+          if(ready&&img&&screen&&!screen.classList.contains('hidden')&&now-lastAt>=stepMs){
             frame=frame>=last?first:frame+1;
             img.src=base+frame+'.png';
             lastAt=now;
@@ -512,7 +520,7 @@
 <script src="js/15-cards.js"></script>
 <script src="js/16-equip-book.js"></script>
 <script src="js/18-misc-book.js"></script>
-<script src="js/17-audio.js?v=20260705b"></script>
+<script src="js/17-audio.js?v=20260705c"></script>
 <script src="js/19-equipment-window.js?v=20260702c"></script>
 <script src="js/20-warehouse-window.js?v=20260702a"></script>
 </body>
