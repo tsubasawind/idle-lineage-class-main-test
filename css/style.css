@@ -112,6 +112,7 @@
         #battle-view.has-bg .mob-target { background: transparent !important; border-color: transparent !important; box-shadow: none; text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.85); }   /* 🔧 狩獵區去框：怪物原圖直接呈現於背景，只保留名稱/血量/狀態(加字陰影保可讀) */
         #battle-view.has-bg .mob-target.active { background: transparent !important; border-color: transparent !important; }   /* 選取中：去框 */
         #battle-view.has-bg .mob-target.active .mob-img-inner { filter: drop-shadow(0 0 4px #ef4444) drop-shadow(0 0 7px #ef4444); }   /* 🔴 紅色鎖定光暈只套在「怪物圖」上(沿輪廓)，不影響名字/徽章/狀態 */
+        #battle-view.has-bg .mob-target.active .mob-img-inner.mob-shadow-tint { filter: brightness(0) drop-shadow(0 0 4px #ef4444) drop-shadow(0 0 7px #ef4444); }   /* 🌑 v3.0.39 剪影怪被鎖定時：filter 不跨規則疊加→上行鎖定光暈會「取代」brightness(0)＝影魔被攻擊瞬間變回灰白。合併寫法＝黑影+紅光暈並存 */
         #battle-view.has-bg .mob-target:hover:not(.active) { background: transparent !important; }
         /* 🏜️ 條狀比例背景(沙漠等·套 area-fit)：戰鬥框高度鎖定＝圖片比例(1920/580)，背景滿版貼齊、任何視窗寬度都無上下黑邊；省下的高度由下方戰鬥日誌(flex-1)自動吸收長高。 */
         /* ⚠️v2.6.37 用戶要求「狩獵區域改回 1920×580 比例」：戰鬥框本身鎖 aspect-ratio 1920/580(＝條狀·不再 flex:1 吃滿整個地圖面板成 16:9)；背景 cover 貼齊此條狀框。省下的高度由 #log-row(下方 :has 規則改 flex:1)吸收。安全區(town·無 area-fit)與攻城/裂痕(16:9·非 area-fit)不受影響。 */
@@ -149,11 +150,25 @@
            ⚠️ 只套 .mob-anim(動畫像素怪)：一般靜態怪圖原生 600×600，若不縮放會爆框→維持上方 height:100% 縮放填滿。transform:none!important 蓋過所有前後排/頭目/jit scale(那些選擇器含 #mob-list 雙 id 特異性高，須 !important)。 */
         #battle-view .mob-img-inner.mob-anim { transform: none !important; }
         #battle-view .mob-img-inner.mob-anim img { height: auto !important; width: auto !important; max-height: none !important; max-width: none !important; }
+        /* 🖥️ v3.0.20 超大動畫怪高度上限：不死鳥(477)/幻象眼魔/古代巨人/水靈之主 等 15 隻原生高度 > 800×242 固定戰鬥框→爆框看不到＋死亡殘影(依 .mob-img-inner 方框 r.height 定尺寸)相對縮小。改：非龍窟頭目格(boss-slot)的動畫怪，本體+影子+武器層一律上限＝影像帶高(max-height:100%＝.mob-img-inner 高)→大怪縮到帶內(三層同畫布同比例→仍逐幀對齊)、死亡殘影方框≈本體不再縮小；小怪(<帶高)維持原生。boss-slot(龍窟大圖)不套維持巨大。 */
+        #battle-view.area-fit .mob-target:not(.boss-slot):not(.boss-zoom) .mob-img-inner.mob-anim img { max-height: 100% !important; }
+        /* 👑 v3.0.25 頭目(boss-zoom·非龍窟)動畫怪：放寬高度上限＝185px（＞一般怪帶高 ~134·<戰鬥框底到頂 194 不爆圖），修「大畫布飛行系頭目(不死鳥640×477/飛龍370×307/伊弗利特135×203)被 v3.0.20 帶高上限縮到比一般怪還小」。原因＝v2.7.86 的 transform:none!important 讓動畫頭目吃不到 .boss-zoom 的 scale(1.78)(避免非整數縮放像素抖動)→頭目大小全靠此 max-height 上限決定·故給頭目專屬較大上限。小畫布頭目(<185)維持原生不拉伸。 */
+        #battle-view.area-fit .mob-target.boss-zoom .mob-img-inner.mob-anim img { max-height: 185px !important; }
+        /* 🐉 v3.0.37 大畫布「非頭目」動畫怪(MOB_ANIM_BIG·js/09 加 .mob-anim-big)：同頭目 185px 上限——遺忘之島飛龍與飛龍同 370×307 大畫布，但非 boss 吃 v3.0.20 帶高上限被縮得比一般怪小。此規則在 v3.0.20 規則之後→同權重下 source order 勝出。 */
+        #battle-view.area-fit .mob-target:not(.boss-slot) .mob-img-inner.mob-anim.mob-anim-big img { max-height: 185px !important; }
+        /* 🧝 v3.0.46 玩家變身戰鬥 sprite（js/09 _playerMorphApply 懶建）：狩獵區最下方中間偏左·原生像素三層(影子 multiply/本體/武器 screen)。
+           ⚠️容器與各層皆不用 transform（隔離群組會使 _w 的 screen blend 失效＝黑框病根 v3.0.19）→ 置中由 js 以 left:calc(44% - 寬/2) 完成。 */
+        #player-morph-sprite { position: absolute; bottom: 4px; height: 1px; z-index: 2; pointer-events: none; overflow: visible; }
+        #player-morph-sprite img { position: absolute; left: 0; bottom: 0; image-rendering: crisp-edges; image-rendering: pixelated; }
+        #player-morph-sprite .pm-shadow { mix-blend-mode: multiply; }
+        #player-morph-sprite .pm-weapon { mix-blend-mode: screen; }
         /* 🌑 v2.7.17 真實影子 sprite 圖層：絕對定位、底部置中、與本體同 native 尺寸(同世界錨定畫布)→像素級疊合。DOM 順序影子在前→本體(在後)自然疊於其上；影子沿用上方 .mob-anim img 的 native/pixelated 規則。 */
         #battle-view .mob-img-inner.mob-anim .mob-anim-shadow { position: absolute !important; left: 50%; bottom: 0; transform: translateX(-50%); pointer-events: none; mix-blend-mode: multiply; }   /* 🌑 v2.7.43 影子灰階當「濃淡遮罩」multiply(白→透明/黑→濃/灰→淡)：修自帶光源怪(不死鳥/伊弗利特)淺灰影子顯示成一塊灰·改成淡影子·一般近黑怪→濃影子 */
         /* ⚔️ v2.7.22 武器揮動特效層：與影子同定位(絕對·底部置中·native)但疊在本體「前」(DOM 順序在本體 img 之後)＋screen 加亮(金色刀光弧發光) */
         #battle-view .mob-img-inner.mob-anim .mob-anim-weapon,
         #battle-view .mob-img-inner.mob-anim .mob-anim-weapon2 { position: absolute !important; left: 50%; bottom: 0; transform: translateX(-50%); pointer-events: none; mix-blend-mode: screen; }
+        /* 🌑 v3.0.24 灰白剪影怪(影魔/象牙塔影魔·天堂 silhouette gfx1571)→半透明黑影：brightness(0) 把淺灰白 spr 全轉黑(保留 alpha 軟邊)、opacity 半透明煙感。掛父層→受擊 keyframe 的 brightness 亮度被此層歸零(不閃回灰)、img 的 translateX 晃動照常。 */
+        #battle-view .mob-img-inner.mob-shadow-tint { filter: brightness(0); opacity: .62; }
         /* 🙈 怪物名字預設隱藏，滑鼠游標移到「怪物圖片」上才顯示（:has 偵測圖片區 hover；img 為 pointer-events:none→hover 落在 .mob-img-wrap；保留名稱列空間避免版面跳動）。.name-show＝JS 依 _hoverMobUid 套用→跨重繪持續顯示(每 tick 換 innerHTML 時 :hover 會瞬失效，靠它穩住不閃) */
         #battle-view .mob-name { opacity: 0; transition: opacity 0.12s ease; }
         #battle-view .mob-target:has(.mob-img-wrap:hover) .mob-name,
@@ -423,7 +438,7 @@
 #tab-automation { display: flex; flex-direction: column; gap: 1rem; }
 #tab-automation.hidden { display: none; }
 
-/* ===== 1.8 風格物品清單（裝備／武器／防具／道具） ===== */
+/* ===== 🎨 v3.0.40 1.8 風格物品清單（裝備／武器／防具／道具·移植自參考版 idle-lineage-class-main-test） ===== */
 .classic-inventory-tab { padding:0 !important; overflow:hidden !important; min-height:0; background:#0b0d12; }
 .classic-inventory-tab:not(.hidden) { display:flex !important; flex-direction:column; }
 .classic-list-toolbar { flex:0 0 auto; margin:0 !important; padding:6px 8px !important; top:0 !important; background:#111827 !important; border-bottom:1px solid #6b5426; z-index:20; }
@@ -463,7 +478,7 @@
 #login-version { margin-bottom:3%; font-size:clamp(12px,1.05vw,18px) !important; font-weight:700; color:#f2d77f; }
 #login-disclaimer { max-width:none !important; padding:0 !important; margin:0 !important; font-size:clamp(9px,.72vw,13px) !important; line-height:1.48; color:#eee2c7; }
 
-/* ===== 1.8 原版風格技能魔法視窗 ===== */
+/* ===== 🎨 v3.0.55 1.8 原版風格技能魔法視窗（移植參考版）＋底部 S.power(魔法傷害)/M.resist(MR) 數值 ===== */
 #tab-skill { padding:0 !important; overflow:auto !important; align-items:center; justify-content:flex-start; background:#08090d; }
 .classic-skill-window {
     position:relative; flex:0 0 auto; width:min(100%,510px); aspect-ratio:1023/1537;
@@ -522,6 +537,10 @@ button.classic-skill-cell { cursor:pointer; }
 }
 .classic-skill-pager button { color:#e7c46b; border:0; background:transparent; padding:1px 3px; }
 .classic-skill-pager button:disabled { color:#5e584d; cursor:default; }
+
+.classic-skill-stat { position:absolute; z-index:5; display:flex; align-items:center; justify-content:center; color:#e4ecff; font-weight:700; font-size:clamp(8px,1vw,15px); text-shadow:0 1px 2px #000,0 0 4px #000; pointer-events:none; letter-spacing:.02em; }
+.classic-skill-stat-sp { left:33.7%; top:91.4%; width:12.9%; height:3.9%; }
+.classic-skill-stat-mr { left:70.7%; top:90.4%; width:13.5%; height:4.6%; }
 
 /* 📱 手機直向：viewport 固定設計寬 1180 時，CSS 高度會被手機長比例放大。
    三欄改用桌機設計高度，保留寬度等比縮放；超出的內容由遊戲舞台捲動，不再拉長地圖與清單皮膚。 */
