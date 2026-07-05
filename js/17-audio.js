@@ -351,6 +351,7 @@ function _bgmDetectScene() {
 
 function _bgmCrossfade(oldEl, newEl) {
     if (_bgmFadeTimer) clearInterval(_bgmFadeTimer);
+    if (!oldEl) { if (newEl) newEl.volume = _bgmTargetVol(); return; }   // 首頁第一首直接到設定音量，不額外等待淡入
     var target = _bgmTargetVol(), steps = 10, n = 0;
     _bgmFadeTimer = setInterval(function () {
         n++; var t = n / steps;
@@ -413,6 +414,7 @@ function _bgmInit() {
     };   // 首次互動立即啟動；若先前遭瀏覽器阻擋，後續互動仍可重試
     document.addEventListener('pointerdown', kick);
     document.addEventListener('keydown', kick);
+    _bgmTick();   // 瀏覽器若允許自動播放便立即開始；若阻擋，首次互動會立刻重試
 }
 
 if (typeof document !== 'undefined') {

@@ -807,6 +807,10 @@ function allyHasMastery(ally, id) { return !!(ally && ally.mastery === id); }   
 function masteryChangeCost() { return { gold: 3000000, warrants: 10 }; }   // 🔧 固定費用：每次更換都維持 300 萬金幣＋10 張王族搜索狀，不再隨次數遞增
 // 技能職業需求等級（單一事實來源）：🏅 魔導精通的妖精可學四項法師法術（需求等級沿用法師）
 function skillReqLv(sk, skId) {
+    if (player.cls === 'knight') {                 // 🛡️ 騎士：Lv50 才可學一階一般魔法；騎士技術仍使用各自 reqK
+        if (sk.reqM !== undefined && sk.tier === 1) return 50;
+        return sk.reqK;
+    }
     if (player.cls === 'dark') {
         if (sk.reqD !== undefined) return sk.reqD;                                  // 黑暗妖精專屬魔法
         if (sk.reqM !== undefined && (sk.tier === 1 || sk.tier === 2)) return sk.tier === 1 ? 12 : 24;   // 基礎法師魔法：一階 Lv12 / 二階 Lv24（學不到精靈水晶與高階法師魔法）
@@ -826,7 +830,7 @@ function skillReqLv(sk, skId) {
         if (player.mastery === 'k_royal_magic' && sk.reqM !== undefined && (sk.tier === 3 || sk.tier === 4 || sk.tier === 5)) return sk.reqM;   // 🏅 魔法精通：可學法師三~五階魔法
         return undefined;
     }
-    let lv = player.cls === 'mage' ? sk.reqM : (player.cls === 'knight' ? sk.reqK : sk.reqE);
+    let lv = player.cls === 'mage' ? sk.reqM : sk.reqE;
     if (lv === undefined && player.cls === 'elf' && player.mastery === 'e_magic' && skId && MAGIC_MASTERY_SKILLS.includes(skId)) lv = sk.reqM;
     return lv;
 }
