@@ -212,12 +212,16 @@ function renderTabs(force) {
             // 👇 判斷如果裝備本身是祝福的，或者物品基底(卷軸)是祝福的，就套用螢光特效
             let glowClass = getGlowClass(eq, d);
             let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="object-contain pointer-events-none ${glowClass}">`;
-            el.innerHTML = `<div class="classic-icon-box">${imgHtml}</div><div class="classic-name-box"><span class="classic-slot-name">${s.n}</span><span class="${getItemColor(eq)} font-bold">${getItemFullName(eq)}</span></div>`;
+            el.title = `${s.n}：${getItemFullName(eq)}`;
+            el.setAttribute('aria-label', el.title);
+            el.innerHTML = `<div class="classic-icon-box">${imgHtml}</div><span class="classic-slot-badge">${s.n}</span>${(eq.en||0)>0 ? `<span class="classic-grid-enhance">+${eq.en}</span>` : ''}`;
             el.onclick = () => openModal(eq, true, s.k);
         } else {
             let _rlv = (s.k === 'ring3') ? 55 : (s.k === 'ring4') ? 65 : (s.k === 'ear2') ? 50 : 0;   // 🔧 第3/4戒指欄、第2耳環欄等級需求
             let _locked = _rlv && player.lv < _rlv;
-            el.innerHTML = `<div class="classic-icon-box"></div><div class="classic-name-box"><span class="classic-slot-name">${s.n}</span><span class="${_locked ? 'text-red-400' : 'text-slate-500'}">${_locked ? '需 Lv' + _rlv : '- 空 -'}</span></div>`;
+            el.title = _locked ? `${s.n}（需 Lv${_rlv}）` : `${s.n}（空）`;
+            el.setAttribute('aria-label', el.title);
+            el.innerHTML = `<div class="classic-icon-box"></div><span class="classic-slot-badge ${_locked ? 'text-red-400' : ''}">${s.n}</span>${_locked ? `<span class="classic-grid-lock">Lv${_rlv}</span>` : ''}`;
         }
         eDiv.appendChild(el);
     });
@@ -268,6 +272,8 @@ player.inv.forEach(i => {
     let el = document.createElement('div'); 
     // className 這裡移除了 isDisabled 相關的判定，讓所有項目都可以互動
     el.className = `list-item text-base ${itemBg} rounded mb-1 ${i.lock ? 'border-red-900 border-2' : ''}`;
+    el.title = getItemFullName(i);
+    el.setAttribute('aria-label', el.title);
     
     // 判斷如果背包裡的物品是祝福的，套用螢光特效
     let imgUrl = getIconUrl(d);
@@ -275,7 +281,7 @@ player.inv.forEach(i => {
     let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="w-6 h-6 object-contain pointer-events-none ${glowClass}">`;
     
     // 內容組合 (加入了 statusTag)
-    let _rowInner = `<div class="classic-item-main"><div class="classic-icon-box">${imgHtml}</div><div class="classic-name-box"><span class="${getItemColor(i)} font-bold">${getItemFullName(i)}</span><span class="classic-item-flags">${statusTag} ${i.lock ? '<span class="text-red-400">[🔒]</span>' : ''} ${(i.junk && !i.lock) ? '<span class="text-amber-400 font-bold">[廢]</span>' : ''}</span></div></div>`;   // 🎨 v3.0.40 1.8皮膚列結構
+    let _rowInner = `<div class="classic-item-main"><div class="classic-icon-box">${imgHtml}</div>${(i.en||0)>0 ? `<span class="classic-grid-enhance">+${i.en}</span>` : ''}${(i.cnt||1)>1 ? `<span class="classic-grid-count">${i.cnt}</span>` : ''}${i.lock ? '<span class="classic-grid-state classic-grid-locked">🔒</span>' : ''}${(i.junk && !i.lock) ? '<span class="classic-grid-state classic-grid-junk">廢</span>' : ''}</div>`;   // 方形物品格：名稱改由 title／點擊視窗顯示
 
     // ⚡ 快速強化模式：對應分頁啟用且為可強化裝備（未鎖定）時，右側顯示勾選欄，點整列切換勾選
     let _qeType = (d.type === 'wpn' && !d.isArrow) ? 'wpn' : ((d.type === 'arm' || d.type === 'acc') ? 'arm' : null);
@@ -319,7 +325,7 @@ player.inv.forEach(i => {
         iDiv.appendChild(el); 
     }
 });
-    // 🎨 v3.0.40 1.8 物品介面：保留原清單事件與功能，只把內容搬入八格皮膚的可捲動區。
+    // 🎨 方形物品格介面：保留原清單事件與功能，超出可視格數時在框內捲動。
     [eDiv,wDiv,aDiv,iDiv].forEach(decorateClassicInventoryTab);
 
     // 🎨 v3.0.55 技能欄改用 1.8 原版風格技能魔法視窗（skill-window-1.8.png 皮膚·tier strip 導覽·底部 S.power=魔法傷害/M.resist=MR）。
@@ -340,6 +346,14 @@ function decorateClassicInventoryTab(div){
     let viewport=document.createElement('div');
     viewport.className='classic-inventory-viewport';
     Array.from(div.children).filter(x=>!x.classList.contains('classic-list-toolbar')&&!x.classList.contains('sticky')).forEach(x=>viewport.appendChild(x));
+    // 至少保留 8 排 × 4 欄，讓沒有物品的位置也保持真正的空方格，而不是退化成文字清單。
+    let used=viewport.querySelectorAll('.list-item').length;
+    for(let n=used;n<32;n++){
+        let empty=document.createElement('div');
+        empty.className='classic-grid-empty';
+        empty.setAttribute('aria-hidden','true');
+        viewport.appendChild(empty);
+    }
     let quick=Array.from(div.children).find(x=>x.classList.contains('sticky'));
     if(quick)quick.classList.add('classic-list-toolbar');
     div.appendChild(viewport);
