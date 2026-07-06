@@ -1,6 +1,11 @@
 let _tabPointerDown = false, _tabWheelActive = false, _tabWheelTimer = null, _tabRebuildPending = false, _tabThrottleTimer = null;
 const TAB_REBUILD_THROTTLE_MS = 250;
 const TAB_WHEEL_IDLE_MS = 180;
+function plainInventoryItemName(item) {
+    let tmp = document.createElement('span');
+    tmp.innerHTML = getItemFullName(item);
+    return (tmp.textContent || tmp.innerText || (DB.items[item.id] && DB.items[item.id].n) || item.id).trim();
+}
 function _initTabGuard() {
     let panel = document.getElementById('tab-content-panel');
     if (!panel || panel._tabGuardInit) return;
@@ -62,6 +67,11 @@ function classicSkillSyncTierFromScroll(view) {
         else break;
     }
     if (tier !== classicSkillBookState.tier) classicSkillSelectTier(tier);
+}
+function classicSkillScrollRows(direction) {
+    let view = document.querySelector('#tab-skill .classic-skill-grid-scroll');
+    if (!view) return;
+    view.scrollBy({ top:(direction < 0 ? -1 : 1) * (view.clientHeight / 8), behavior:'smooth' });
 }
 function classicSkillChooseMode(mode) {
     classicSkillBookState.mode = mode;
@@ -138,6 +148,8 @@ function renderClassicSkillBook(sDiv) {
         + '<div class="classic-skill-mode">' + modeButtons + '</div>'
         + '<div class="classic-skill-tier-strip" style="background-image:url(\'assets/ui/skill-level/' + sprite + '.png\')">' + tierButtons + '</div>'
         + '<div class="classic-skill-grid-scroll" onscroll="classicSkillSyncTierFromScroll(this)"><div class="classic-skill-grid">' + cells + '</div></div>'
+        + '<button type="button" class="classic-skill-scroll classic-skill-scroll-up" aria-label="技能向上捲動" onclick="classicSkillScrollRows(-1)"></button>'
+        + '<button type="button" class="classic-skill-scroll classic-skill-scroll-down" aria-label="技能向下捲動" onclick="classicSkillScrollRows(1)"></button>'
         + '<div class="classic-skill-stat classic-skill-stat-sp">' + _spv + '</div>'
         + '<div class="classic-skill-stat classic-skill-stat-mr">' + _mrv + '</div>'
         + '</div>';
@@ -212,11 +224,13 @@ function renderTabs(force) {
             // 👇 判斷如果裝備本身是祝福的，或者物品基底(卷軸)是祝福的，就套用螢光特效
             let glowClass = getGlowClass(eq, d);
             let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="object-contain pointer-events-none ${glowClass}">`;
+            el.title = `${s.n}：${plainInventoryItemName(eq)}`;
             el.innerHTML = `<div class="classic-icon-box">${imgHtml}</div><div class="classic-name-box"><span class="classic-slot-name">${s.n}</span><span class="${getItemColor(eq)} font-bold">${getItemFullName(eq)}</span></div>`;
             el.onclick = () => openModal(eq, true, s.k);
         } else {
             let _rlv = (s.k === 'ring3') ? 55 : (s.k === 'ring4') ? 65 : (s.k === 'ear2') ? 50 : 0;   // 🔧 第3/4戒指欄、第2耳環欄等級需求
             let _locked = _rlv && player.lv < _rlv;
+            el.title = _locked ? `${s.n}（需 Lv${_rlv}）` : `${s.n}（空）`;
             el.innerHTML = `<div class="classic-icon-box"></div><div class="classic-name-box"><span class="classic-slot-name">${s.n}</span><span class="${_locked ? 'text-red-400' : 'text-slate-500'}">${_locked ? '需 Lv' + _rlv : '- 空 -'}</span></div>`;
         }
         eDiv.appendChild(el);
@@ -268,6 +282,7 @@ player.inv.forEach(i => {
     let el = document.createElement('div'); 
     // className 這裡移除了 isDisabled 相關的判定，讓所有項目都可以互動
     el.className = `list-item text-base ${itemBg} rounded mb-1 ${i.lock ? 'border-red-900 border-2' : ''}`;
+    el.title = plainInventoryItemName(i);
     
     // 判斷如果背包裡的物品是祝福的，套用螢光特效
     let imgUrl = getIconUrl(d);
@@ -337,12 +352,29 @@ player.inv.forEach(i => {
 function decorateClassicInventoryTab(div){
     if(!div)return;
     div.classList.add('classic-inventory-tab');
+    let shell=document.createElement('div');
+    shell.className='classic-inventory-shell';
     let viewport=document.createElement('div');
     viewport.className='classic-inventory-viewport';
     Array.from(div.children).filter(x=>!x.classList.contains('classic-list-toolbar')&&!x.classList.contains('sticky')).forEach(x=>viewport.appendChild(x));
+    // 532 原圖的實際格線為 4 欄 × 8 排（x=45~191、y=21~309）；內部格位才是捲動內容。
+    let used=viewport.querySelectorAll('.list-item').length;
+    for(let n=used;n<32;n++){
+        let empty=document.createElement('div');
+        empty.className='classic-grid-empty';
+        empty.setAttribute('aria-hidden','true');
+        viewport.appendChild(empty);
+    }
+    let up=document.createElement('button');
+    up.type='button'; up.className='classic-inventory-scroll classic-inventory-scroll-up'; up.setAttribute('aria-label','向上捲動');
+    up.onclick=()=>viewport.scrollBy({top:-Math.max(32,viewport.clientHeight/8),behavior:'smooth'});
+    let down=document.createElement('button');
+    down.type='button'; down.className='classic-inventory-scroll classic-inventory-scroll-down'; down.setAttribute('aria-label','向下捲動');
+    down.onclick=()=>viewport.scrollBy({top:Math.max(32,viewport.clientHeight/8),behavior:'smooth'});
+    shell.appendChild(viewport); shell.appendChild(up); shell.appendChild(down);
     let quick=Array.from(div.children).find(x=>x.classList.contains('sticky'));
     if(quick)quick.classList.add('classic-list-toolbar');
-    div.appendChild(viewport);
+    div.appendChild(shell);
 }
 
 // ===== 召喚類技能互斥：迷魅 / 召喚 / 造屍 / 召喚屬性精靈 / 召喚強力屬性精靈 同時只能開啟一個 =====
