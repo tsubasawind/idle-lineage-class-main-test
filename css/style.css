@@ -440,48 +440,25 @@
 
 /* ===== 🎨 v3.0.40 1.8 風格物品清單（裝備／武器／防具／道具·移植自參考版 idle-lineage-class-main-test） ===== */
 .classic-inventory-tab { padding:0 !important; overflow:hidden !important; min-height:0; background:#0b0d12; }
-.classic-inventory-tab:not(.hidden) { display:flex !important; flex-direction:column; align-items:center; }
-.classic-list-toolbar { flex:0 0 auto; width:100%; margin:0 !important; padding:6px 8px !important; top:0 !important; background:#111827 !important; border-bottom:1px solid #6b5426; z-index:20; }
-.classic-inventory-viewport {
-    container-type:inline-size;
-    flex:1 1 auto; width:100%; max-width:100%; min-height:0;
-    display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); grid-auto-rows:calc((100cqi - 12px)/4);
-    align-content:start; gap:4px; overflow-y:auto; overflow-x:hidden; box-sizing:border-box;
-    padding:10px 18px 14px 10px;
-    border:4px ridge #9c7627; border-radius:8px;
-    background:#090b10;
-    scrollbar-width:thin; scrollbar-color:#d6a638 #17191d; overscroll-behavior:contain;
-}
+.classic-inventory-tab:not(.hidden) { display:flex !important; flex-direction:column; }
+.classic-list-toolbar { flex:0 0 auto; margin:0 !important; padding:6px 8px !important; top:0 !important; background:#111827 !important; border-bottom:1px solid #6b5426; z-index:20; }
+.classic-inventory-viewport { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; padding:3.4% 14.5% 8.2% 5.8%; background:#111 url('../assets/ui/inventory-1.8.png') center/100% 100% no-repeat; scrollbar-width:thin; scrollbar-color:#d6a638 #17191d; }
 .classic-inventory-viewport::-webkit-scrollbar { width:12px; }
 .classic-inventory-viewport::-webkit-scrollbar-track { background:rgba(13,15,18,.75); border-left:1px solid #76591d; }
 .classic-inventory-viewport::-webkit-scrollbar-thumb { background:linear-gradient(90deg,#69480e,#f1cd59 45%,#8d6519); border:1px solid #f7df86; border-radius:8px; box-shadow:0 0 4px #000; }
-.classic-inventory-viewport > .list-item {
-    position:relative; box-sizing:border-box; display:flex !important; align-items:center; justify-content:center;
-    width:100%; height:100%; min-width:0; min-height:0; max-height:none;
-    margin:0 !important; padding:3px !important; border:1px solid #665329 !important;
-    border-radius:3px !important; background:linear-gradient(145deg,#15171c,#050608) !important;
-    box-shadow:inset 0 0 0 2px #050505,inset 0 0 10px #000 !important; overflow:hidden;
-}
-.classic-inventory-viewport > .list-item:hover { border-color:#d5ae56 !important; filter:brightness(1.18); }
-.classic-inventory-viewport > .classic-grid-empty { box-sizing:border-box; width:100%; height:100%; min-width:0; min-height:0; border:1px solid #4a4028; border-radius:3px; background:linear-gradient(145deg,#101217,#050608); box-shadow:inset 0 0 0 2px #050505,inset 0 0 10px #000; pointer-events:none; }
-.classic-item-main { position:relative; display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+.classic-inventory-viewport > .list-item { box-sizing:border-box; display:flex !important; align-items:center; width:100%; height:12.5%; min-height:58px; margin:0 !important; padding:3px 5px !important; border:0 !important; border-radius:5px !important; background:transparent !important; box-shadow:none !important; overflow:hidden; }
+.classic-inventory-viewport > .list-item:hover { background:rgba(180,139,58,.15) !important; filter:brightness(1.14); }
+.classic-item-main { display:grid; grid-template-columns:18% minmax(0,1fr); align-items:center; width:100%; height:100%; gap:4%; }
 .classic-icon-box { display:flex; align-items:center; justify-content:center; width:100%; height:100%; min-width:0; }
-.classic-icon-box img,.classic-item-main .classic-icon-box img { width:84% !important; height:84% !important; max-width:none; max-height:none; margin:0 !important; object-fit:contain; }
+.classic-icon-box img,.classic-item-main .classic-icon-box img { width:78% !important; height:78% !important; max-width:48px; max-height:48px; margin:0 !important; object-fit:contain; }
 .classic-name-box { display:flex; align-items:center; gap:5px; min-width:0; overflow:hidden; color:#e5e7eb; text-shadow:0 1px 2px #000; white-space:nowrap; }
 .classic-name-box > span:not(.classic-slot-name):first-of-type { overflow:hidden; text-overflow:ellipsis; }
 .classic-slot-name { color:#9ca3af; font-size:11px; flex:0 0 auto; }
 .classic-item-flags { display:inline-flex; gap:2px; flex:0 0 auto; font-size:10px; }
-.classic-inventory-viewport > .list-item > .classic-icon-box { flex:1 1 auto; margin:0; }
-.classic-inventory-viewport > .list-item > .classic-name-box { display:none; }
-.classic-inventory-viewport input[type="checkbox"] { position:absolute; z-index:5; right:2px; top:2px; width:14px; height:14px; margin:0; }
-.classic-inventory-viewport > .list-item > div { position:relative; width:100%; height:100%; min-width:0; }
-.classic-slot-badge { position:absolute; z-index:3; left:2px; right:2px; bottom:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; color:#c8b98f; font-size:clamp(7px,.62vw,10px); line-height:1.15; text-shadow:0 1px 3px #000,0 0 3px #000; }
-.classic-grid-enhance { position:absolute; z-index:4; right:2px; bottom:1px; color:#ffe169; font-size:clamp(8px,.72vw,12px); font-weight:800; line-height:1; text-shadow:0 1px 3px #000,0 0 3px #000; }
-.classic-grid-count { position:absolute; z-index:4; right:2px; top:2px; max-width:70%; overflow:hidden; text-overflow:ellipsis; color:#f4f4f5; font-size:clamp(7px,.65vw,11px); font-weight:700; line-height:1; text-shadow:0 1px 3px #000,0 0 3px #000; }
-.classic-grid-state { position:absolute; z-index:4; left:2px; top:2px; padding:1px 2px; border-radius:2px; font-size:clamp(6px,.55vw,9px); font-weight:800; line-height:1; text-shadow:0 1px 2px #000; }
-.classic-grid-locked { color:#fca5a5; background:rgba(80,0,0,.72); }
-.classic-grid-junk { color:#fde68a; background:rgba(120,53,15,.82); }
-.classic-grid-lock { position:absolute; z-index:4; right:2px; top:2px; color:#fca5a5; font-size:clamp(6px,.55vw,9px); font-weight:800; }
+.classic-inventory-viewport > .list-item > .classic-icon-box { flex:0 0 18%; margin-right:4%; }
+.classic-inventory-viewport > .list-item > .classic-name-box { flex:1 1 auto; }
+.classic-inventory-viewport input[type="checkbox"] { flex:0 0 auto; margin-right:3px; }
+.classic-inventory-viewport > .list-item > div { width:100%; min-width:0; }
 
 /* ===== 登入首頁：310 固定底圖＋273～300 左下逐幀動畫 ===== */
 #creation-screen { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; overflow:auto; padding:0; background:#050505; }
@@ -515,16 +492,16 @@
 }
 .classic-skill-grid-scroll {
     position:absolute; z-index:3; left:23.5%; top:5.35%; width:62.2%; height:81.65%;
-    container-type:inline-size; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; overscroll-behavior:contain;
+    overflow-y:auto; overflow-x:hidden; scrollbar-width:none; overscroll-behavior:contain;
 }
 .classic-skill-grid-scroll::-webkit-scrollbar { width:0; height:0; }
 .classic-skill-grid {
     position:relative; width:100%; min-height:100%; display:grid; grid-template-columns:repeat(4,1fr);
-    grid-auto-rows:25cqi; grid-auto-flow:row; align-content:start;
+    grid-auto-flow:row; align-content:start;
 }
 .classic-skill-cell {
-    position:relative; display:flex; align-items:center; justify-content:center; width:100%; height:100%; padding:1.5%;
-    aspect-ratio:auto; border:0; border-radius:0;
+    position:relative; display:flex; align-items:center; justify-content:center; padding:1.5%;
+    aspect-ratio:1.015/1; border:0; border-radius:0;
     background:transparent; color:#fff; min-width:0; min-height:0;
 }
 button.classic-skill-cell { cursor:pointer; }
@@ -579,7 +556,7 @@ button.classic-skill-cell { cursor:pointer; }
     #col-left { overflow-y:auto; overflow-x:hidden; }
     #col-center,#col-right { min-height:0; }
     #tab-content-panel { min-height:0; }
-    .classic-inventory-viewport { flex:1 1 auto; width:100%; min-height:0; }
+    .classic-inventory-viewport { background-size:100% 100%; }
 }
 #slot-select-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,92vw); max-height:92vh; overflow:auto; margin:0 !important; padding:22px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
 #creation-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(1000px,96vw); max-height:96vh; overflow:auto; padding:20px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
