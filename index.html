@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <script>
       // 📱 手機/平板：以固定設計寬度讓整個桌機版面「等比縮小」到螢幕，避免欄位溢出導致按鈕被裁切/點不到。
       //    桌機瀏覽器會忽略 viewport meta，故此設定僅影響行動裝置，完全不動桌機(1920/1440/4K)顯示。
@@ -28,7 +31,7 @@
     <title>放置天堂 - 以血為盟</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=20260706-sort2">
     <link rel="stylesheet" href="css/floating-ui.css?v=20260702g">
     <link rel="stylesheet" href="css/tailwind-built.css"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
 </head>
@@ -512,7 +515,7 @@
 <script src="js/07-skills-cast.js"></script>
 <script src="js/08-items-equip.js"></script>
 <script src="js/09-vfx-render.js"></script>
-<script src="js/10-ui-tabs.js"></script>
+<script src="js/10-ui-tabs.js?v=20260706-sort2"></script>
 <script src="js/11-world-map.js"></script>
 <script src="js/12-npc-quests.js"></script>
 <script src="js/13-shop-save.js"></script>
