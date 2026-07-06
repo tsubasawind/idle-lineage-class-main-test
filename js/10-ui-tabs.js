@@ -374,7 +374,19 @@ function decorateClassicInventoryTab(div){
     let down=document.createElement('button');
     down.type='button'; down.className='classic-inventory-scroll classic-inventory-scroll-down'; down.setAttribute('aria-label','向下捲動');
     down.onclick=()=>viewport.scrollBy({top:Math.max(32,viewport.clientHeight/8),behavior:'smooth'});
-    shell.appendChild(viewport); shell.appendChild(up); shell.appendChild(down);
+    let sortWrap=document.createElement('div');
+    sortWrap.className='classic-sort-wrap';
+    let sortBtn=document.createElement('button');
+    sortBtn.type='button'; sortBtn.className='classic-sort-button'; sortBtn.title='整理背包'; sortBtn.setAttribute('aria-label','整理背包'); sortBtn.textContent='↕';
+    let sortMenu=document.createElement('div');
+    sortMenu.className='classic-sort-menu';
+    let mode=inventorySortMode();
+    sortMenu.innerHTML=`<button type="button" data-sort="category" class="${mode==='category'?'active':''}">分類整理</button><button type="button" data-sort="quality" class="${mode==='quality'?'active':''}">品質整理</button><button type="button" data-sort="name" class="${mode==='name'?'active':''}">名稱整理</button><label><input type="checkbox" ${player.inventoryAutoSort===false?'':'checked'}> 取得物品時自動整理</label>`;
+    sortBtn.onclick=(ev)=>{ev.stopPropagation();sortMenu.classList.toggle('open');};
+    sortMenu.querySelectorAll('[data-sort]').forEach(b=>b.onclick=(ev)=>{ev.stopPropagation();setInventorySortMode(b.dataset.sort);});
+    let auto=sortMenu.querySelector('input');if(auto)auto.onchange=()=>toggleInventoryAutoSort(auto.checked);
+    sortWrap.appendChild(sortBtn);sortWrap.appendChild(sortMenu);
+    shell.appendChild(viewport); shell.appendChild(up); shell.appendChild(down); shell.appendChild(sortWrap);
     let quick=Array.from(div.children).find(x=>x.classList.contains('sticky'));
     if(quick)quick.classList.add('classic-list-toolbar');
     div.appendChild(shell);
@@ -1386,7 +1398,7 @@ function toggleJunk(uid) {
 
 // 一鍵排列：依規則重新排序背包（武器 / 防具飾品 / 道具 各自分頁內排序）
 // ===== 🔧 物品排序比較器（背包「一鍵排列」與倉庫「一鍵排列」共用，規則完全相同）=====
-const invSortCmp = (function () {
+const legacyInvSortCmp = (function () {
     // 防具/飾品「特效」判定：基底物品具有 AC 以外的加成欄位即視為有特效
     const MUNDANE = new Set(['n','type','slot','ac','req','safe','p','c','d','img','gachaWeight','unBonus']);
     let hasArmEffect = (d) => { for (let k in d) { if (!MUNDANE.has(k) && d[k]) return true; } return false; };
@@ -1462,10 +1474,74 @@ const invSortCmp = (function () {
 
 // 🔧 v2.6.73 一鍵排列改「獲得物品時自動觸發」（gainItem 尾端掛點）：每 10 秒最多 1 次·靜默（不 saveGame·排序結果隨其他存檔點落地）
 // 🔧 v2.6.80 與「啟用自動販賣」合併控制（用戶要求）：player.autoSellOn=false 時自動排列一併停用
+// 背包整理：判斷物品目前的結果，不區分加工或掉落來源。
+const INV_SORT_MODE_KEY = 'inventorySortMode';
+function inventorySortMode(){ return (player && player[INV_SORT_MODE_KEY]) || 'category'; }
+function inventoryDef(i){ return (i && DB.items[i.id]) || {}; }
+function inventoryTypeRank(i,d){ return d.type==='wpn'?0:((d.type==='arm'||d.type==='acc'||d.doll||d.slot==='doll')?1:2); }
+function weaponSortRank(i,d){
+    let s=(i.id||'')+'|'+(d.n||'')+'|'+(typeof getWeaponTags==='function'?getWeaponTags(i.id).join('|'):'');
+    if(/dagger|匕首/.test(s))return 0; if(/katana|武士刀/.test(s))return 1;
+    if(/2hsword|雙手劍/.test(s))return 3; if(/sword|劍/.test(s))return 2;
+    if(/spear|矛|槍/.test(s))return 4; if(/2h.*axe|giantaxe|battleaxe|雙手鈍器|雙手斧/.test(s))return 6;
+    if(/axe|hammer|mace|鈍器|斧/.test(s))return 5; if(/bow|弓/.test(s))return 7;
+    if(/claw|鋼爪/.test(s))return 8; if(/dual|雙刀/.test(s))return 9;
+    if(/chain|鎖鏈劍/.test(s))return 10; if(/wand|staff|法杖/.test(s))return 11; return 90;
+}
+function armorSortRank(i,d){
+    let s=(d.slot||'')+'|'+(i.id||'')+'|'+(d.n||'');
+    if(/helm|head|頭盔/.test(s))return 0; if(/shirt|內衣|T恤/.test(s))return 1;
+    if(/armor|body|盔甲/.test(s))return 2; if(/cloak|斗篷/.test(s))return 3;
+    if(/shield|盾/.test(s))return 4; if(/glove|手套/.test(s))return 5;
+    if(/boot|shoe|長靴|靴/.test(s))return 6; if(/ear|耳環/.test(s))return 7;
+    if(/amulet|neck|項鍊/.test(s))return 8; if(/ring|戒指/.test(s))return 9;
+    if(/belt|腰帶/.test(s))return 10; if(d.doll||/doll|娃娃/.test(s))return 11; return 90;
+}
+function itemSortRank(i,d){
+    if(d.eff==='card')return 0;
+    let s=(d.type||'')+'|'+(i.id||'')+'|'+(d.n||'');
+    if(/pot|potion|藥水/.test(s))return 1; if(/scroll|卷軸/.test(s))return 2;
+    if(/skillbk|魔法書|法術書|精靈水晶|技能書/.test(s))return 3;
+    if(/gem|crystal|寶石|水晶/.test(s))return 4; if(/material|材料/.test(s))return 5;
+    if(/quest|任務/.test(s))return 6; return 90;
+}
+function inventorySubRank(i,d){ let c=inventoryTypeRank(i,d); return c===0?weaponSortRank(i,d):(c===1?armorSortRank(i,d):itemSortRank(i,d)); }
+function inventoryNameCmp(a,b){ return (inventoryDef(a).n||a.id||'').localeCompare(inventoryDef(b).n||b.id||'','zh-Hant'); }
+function ancientSortRank(v){ return v==='primordial'?4:(v==='immortal'?3:(v==='eternal'?2:(v?1:0))); }
+function attributeSortRank(v){ if(!v||(typeof getAttrAffix==='function'&&!getAttrAffix(v)))return 0; let m=String(v).match(/(\d+)/g); return 1+(m?Number(m[m.length-1]):0); }
+function inventoryQualityCmp(a,b){
+    if(!!a.lock!==!!b.lock)return a.lock?-1:1; if(!!a.junk!==!!b.junk)return a.junk?1:-1;
+    if((b.en||0)!==(a.en||0))return (b.en||0)-(a.en||0);
+    if(!!a.seteff!==!!b.seteff)return a.seteff?-1:1;
+    if(a.seteff&&b.seteff){let s=String(a.seteff).localeCompare(String(b.seteff),'zh-Hant');if(s)return s;}
+    let aa=ancientSortRank(a.anc),ab=ancientSortRank(b.anc);if(aa!==ab)return ab-aa;
+    let xa=attributeSortRank(a.attr),xb=attributeSortRank(b.attr);if(xa!==xb)return xb-xa;
+    let ba=a.bless===true?1:0,bb=b.bless===true?1:0;if(ba!==bb)return bb-ba;
+    let la=inventoryDef(a).legend?1:0,lb=inventoryDef(b).legend?1:0;if(la!==lb)return lb-la;
+    let ca=a.bless==='cursed'?1:0,cb=b.bless==='cursed'?1:0;if(ca!==cb)return ca-cb;
+    let ta=inventoryDef(a).cardTier||0,tb=inventoryDef(b).cardTier||0;if(ta!==tb)return tb-ta;
+    return inventoryNameCmp(a,b);
+}
+const invSortCmp=function(a,b){
+    let da=inventoryDef(a),db=inventoryDef(b),mode=inventorySortMode();
+    if(!!a.lock!==!!b.lock)return a.lock?-1:1; if(!!a.junk!==!!b.junk)return a.junk?1:-1;
+    let ca=inventoryTypeRank(a,da),cb=inventoryTypeRank(b,db);if(ca!==cb)return ca-cb;
+    let sa=inventorySubRank(a,da),sb=inventorySubRank(b,db);
+    if(mode==='name'){let n=inventoryNameCmp(a,b);return n||inventoryQualityCmp(a,b);}
+    if(mode==='quality'){let q=inventoryQualityCmp(a,b);return q||(sa-sb)||inventoryNameCmp(a,b);}
+    if(sa!==sb)return sa-sb; return inventoryQualityCmp(a,b);
+};
+function setInventorySortMode(mode){
+    if(!player||!['category','quality','name'].includes(mode))return;
+    player[INV_SORT_MODE_KEY]=mode; player.inv.sort(invSortCmp);
+    if(typeof saveGame==='function')saveGame(); renderTabs(true);
+}
+function toggleInventoryAutoSort(on){ if(!player)return;player.inventoryAutoSort=!!on;if(typeof saveGame==='function')saveGame(); }
+
 let _autoSortAt = -99999;
 function autoSortInventory() {
     if (!player || !Array.isArray(player.inv) || typeof state === 'undefined' || !state.running) return;   // 遊戲未開始（創角配發起始道具等）不排
-    if (player.autoSellOn === false) return;   // 🔗 與自動販賣同開關（undefined 視為開）
+    if (player.inventoryAutoSort === false) return;   // 整理開關獨立於自動販賣
     if (state.ticks - _autoSortAt < 100) return;   // ⏲️ 10 秒節流（100 ticks）
     _autoSortAt = state.ticks;
     player.inv.sort(invSortCmp);
@@ -1528,7 +1604,7 @@ function _renderAutoSellBtn() {
     b.textContent = on ? '自動賣出' : '停止賣出';
     b.style.opacity = on ? '' : '0.4';            // 變暗＝停止
     b.style.filter = on ? '' : 'grayscale(0.85)';
-    b.title = on ? '自動販賣＋自動排列已開啟（每 10 秒賣出標記廢品；獲得物品自動排列背包）。' : '自動販賣＋自動排列已停止。';   // 🔗 v2.6.80 兩者合併同一開關（as-on 勾選）
+    b.title = on ? '自動販賣已開啟。' : '自動販賣已停止。';
 }
 
 // ===== 自動販賣規則（初版） =====
@@ -1650,7 +1726,7 @@ function openAutoSellRules() {
       .as-box{width:min(720px,92vw);max-height:88vh;overflow:auto;background:#172033;border:2px solid #b7791f;border-radius:14px;padding:18px;box-shadow:0 18px 60px #000}
       .as-head{display:flex;justify-content:space-between;align-items:center;font-size:23px;font-weight:bold;color:#fde68a}.as-sec{background:#0f172acc;border:1px solid #475569;border-radius:10px;padding:12px;margin-top:12px}.as-title{font-weight:bold;color:#fbbf24;margin-bottom:7px}.as-row{display:block;padding:5px 0}.as-row input[type=number]{width:72px;background:#020617;border:1px solid #64748b;border-radius:5px;padding:3px;text-align:center}.as-row input[type=checkbox]{width:18px;height:18px;vertical-align:middle}.as-help,.as-muted{font-size:13px;color:#94a3b8}.as-actions{display:flex;gap:8px;margin-top:12px}.as-actions button,.as-head button,.as-ex button,.as-ex-tools button{background:#334155;border:1px solid #64748b;border-radius:6px;padding:6px 12px}.as-actions .primary{background:#92400e;border-color:#f59e0b}.as-ex{display:flex;gap:10px;align-items:center;padding:5px;border-bottom:1px solid #334155}.as-ex span{flex:1}.as-ex b{color:#fcd34d}.as-ex-tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.as-ex-tools input,.as-ex-tools select,select{background:#020617;border:1px solid #64748b;padding:6px;border-radius:6px}.as-ex-tools input{min-width:180px;flex:1}.as-btnrow{display:flex;align-items:center;flex-wrap:wrap;gap:6px}.as-sell-now-btn{margin-left:10px;height:38px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;line-height:1;padding:0 12px;border:2px solid #fb923c;border-radius:7px;background:#7c2d12;color:#ffedd5;font-weight:bold;cursor:pointer;box-shadow:0 2px 7px #0008}.as-sell-now-btn:hover{filter:brightness(1.25)}.as-sort-now-btn{border-color:#22d3ee;background:#164e63;color:#cffafe}.as-override-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.as-override-actions button{padding:7px 13px;border:2px solid;border-radius:7px;font-weight:bold;cursor:pointer;box-shadow:0 2px 7px #0008;transition:filter .15s,transform .15s}.as-override-actions button:hover{filter:brightness(1.25);transform:translateY(-1px)}.as-keep-btn{color:#bbf7d0;background:#14532d;border-color:#4ade80!important}.as-sell-btn{color:#fecaca;background:#7f1d1d;border-color:#f87171!important}#as-item{width:min(100%,390px);margin-bottom:7px}
     </style><div class="as-box"><div class="as-head"><span>自動販賣規則</span><button onclick="closeAutoSellRules()">Close</button></div>
-      <div class="as-sec"><label class="as-row"><input id="as-on" type="checkbox" ${player.autoSellOn!==false?'checked':''}> 啟用自動販賣＋自動排列</label><label class="as-row"><input id="as-global" type="checkbox" ${player.autoSellGlobal?'checked':''}> 套用全部存檔（8 個角色共用此設定）</label><div class="as-row as-btnrow"><span>物品取得／符合規則後，等待</span><input id="as-delay" type="number" min="10" max="86400" value="${r.delaySec}"><span>秒才販賣</span><button type="button" class="as-sell-now-btn" onclick="sellAutoSellItemsNow()">立即賣出廢品</button><button type="button" class="as-sell-now-btn as-sort-now-btn" onclick="sortInventoryNow()">立即一鍵排列</button></div><div class="as-help">等待期間可取消廢品標記（取消後該件不再被規則自動標記，直到重新儲存規則）或鎖定物品；「立即賣出廢品」套用目前規則並跳過等待秒數；「立即一鍵排列」立刻重排背包。停用開關並儲存後，規則產生的廢品標記會清除、獲得物品的自動排列也會停止；勾選「套用全部存檔」會在各角色下次載入時共用此設定。</div></div>
+      <div class="as-sec"><label class="as-row"><input id="as-on" type="checkbox" ${player.autoSellOn!==false?'checked':''}> 啟用自動販賣</label><label class="as-row"><input id="as-global" type="checkbox" ${player.autoSellGlobal?'checked':''}> 套用全部存檔（8 個角色共用此設定）</label><div class="as-row as-btnrow"><span>物品取得／符合規則後，等待</span><input id="as-delay" type="number" min="10" max="86400" value="${r.delaySec}"><span>秒才販賣</span><button type="button" class="as-sell-now-btn" onclick="sellAutoSellItemsNow()">立即賣出廢品</button><button type="button" class="as-sell-now-btn as-sort-now-btn" onclick="sortInventoryNow()">依目前方式整理</button></div><div class="as-help">等待期間可取消廢品標記或鎖定物品；「立即賣出廢品」會跳過等待秒數。背包整理方式與自動整理開關請在背包左側的整理按鈕設定，與自動販賣互不影響。</div></div>
       <div class="as-sec"><div class="as-title">裝備條件</div>${equipRows}<label class="as-row"><input id="as-pb" type="checkbox" ${r.protectBless?'checked':''}> 保護祝福裝備</label><label class="as-row"><input id="as-pa" type="checkbox" ${r.protectAnc?'checked':''}> 保護古代裝備</label><label class="as-row"><input id="as-pt" type="checkbox" ${r.protectAttr?'checked':''}> 保護屬性裝備</label><label class="as-row"><input id="as-ps" type="checkbox" ${r.protectSet?'checked':''}> 保護套裝詞綴裝備</label><label class="as-row"><input id="as-pl" type="checkbox" ${r.protectLegend?'checked':''}> 保護傳說裝備</label><label class="as-row"><input id="as-pold" type="checkbox" ${r.protectOldSeries?'checked':''}> 保護解封後的「古老的」系列裝備</label><div class="as-help">解除封印完成後立即保護古老的劍、巨劍、弩槍、鱗甲、皮盔甲、長袍及金屬盔甲，避免成品在取得瞬間被規則標為廢品。</div><label class="as-row"><input id="as-pcraft" type="checkbox" ${r.protectCraftEquip?'checked':''}> 保護製作素材裝備；保留可製作 <input id="as-craftsets" type="number" min="1" max="99" value="${r.craftSets}"> 次的數量</label><div class="as-help">系統會掃描全部製作配方，例如配方需要「暗殺軍王之痕 ×1」，保留 1 次就至少留 1 件，多餘數量才依武器規則處理。</div></div>
       <div class="as-sec"><div class="as-title">材料與一般物品</div>${miscRows}<div class="as-help">任務物品、不可販賣物品與系統保護物品不會被處理。</div></div>
       <div class="as-sec"><div class="as-title">個別例外（全遊戲物品）</div><div class="as-ex-tools"><input id="as-item-search" type="search" placeholder="輸入物品名稱搜尋" oninput="refreshAutoSellItemOptions()"><select id="as-item-type" onchange="refreshAutoSellItemOptions()"><option value="all">全部分類</option>${exceptionTypeRows}</select><select id="as-item-scope" onchange="refreshAutoSellItemOptions()"><option value="all">全部物品</option><option value="held">目前持有</option></select></div><div class="as-override-actions"><select id="as-item">${itemRows}</select><button class="as-keep-btn" onclick="setAutoSellOverride('keep')">永遠保留</button><button class="as-sell-btn" onclick="setAutoSellOverride('sell')">永遠販賣</button></div><div class="as-help">例外依物品本體全局套用，包含未取得物品及其所有強化、祝福、屬性與套裝版本。</div><div id="as-overrides">${rules}</div></div>
