@@ -394,7 +394,7 @@ function craftActionHtml(npcId, idx) {
     //（消耗相同材料＋每件 1 個席琳結晶，成品必定附帶隨機席琳套裝效果；其餘詞綴機率照舊）
     let _r = CRAFT_RECIPES[npcId] && CRAFT_RECIPES[npcId][idx];
     let _rd = _r && DB.items[_r.result];
-    let _shOk = _rd && !player.classicMode && sherineSetEligible(_rd);   // 🔮 單一真相＝sherineSetEligible（含副手盾牌/臂甲 slot:shield）；勿再 inline 複製部位清單
+    let _shOk = false;   // 🦴 v3.1.68 席琳製作綠鈕全面移除：套裝詞綴不再出現於裝備上（改由席琳遺骸承載·NPC 伊奧兌換）；原判定＝_rd && !player.classicMode && sherineSetEligible(_rd)
     let _shBtn = _shOk ? `<button class="btn bg-green-900 hover:bg-green-800 border-green-600 py-2 px-3 font-bold shadow" onclick="doCraft('${npcId}', ${idx}, true)" title="消耗相同材料＋每件 1 個席琳結晶：成品必定附帶一種席琳套裝效果"><span class="c-sherine">席琳製作</span></button>` : '';
     return `<div class="flex items-center gap-2 shrink-0">
         <input type="number" min="1" value="1" id="craft-qty-${npcId}-${idx}" onclick="event.stopPropagation()" class="w-14 px-1 py-2 bg-slate-900 border border-slate-600 rounded text-center text-white font-bold">
@@ -863,7 +863,8 @@ function craftShortfall(recipe, count) {
     for (let q of recipe.req) take(q.id, q.cnt * count);
     return lack;
 }
-function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine=true：席琳製作（材料＋每件 1 個席琳結晶，成品必帶套裝效果）
+function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine 參數保留簽章相容；⚠️v3.1.68 席琳製作已移除（詞綴不再附於裝備·改由遺骸承載）
+    sherine = false;   // 🦴 v3.1.68 縱深防護：任何殘留呼叫都不再扣結晶/附詞綴（綠鈕已由 craftActionHtml _shOk=false 隱藏）
     let recipe = CRAFT_RECIPES[npcId][recipeIdx];
     if (!recipe) return;
 
@@ -1611,7 +1612,7 @@ function cancelEditName() {
 
 window.onload = () => {
     migrateSaves();
-    if (anySaveExists()) document.getElementById('btn-load').classList.remove('hidden');
+    { const btnLoad = document.getElementById('btn-load'); if (btnLoad && anySaveExists()) btnLoad.classList.remove('hidden'); }
     try { _applyVfxPref(); } catch (e) {}   // 🎚️ 套用標題畫面的「戰鬥特效開關」偏好（持久化於 localStorage）
     try { let _v = document.getElementById('login-version'); if (_v && typeof GAME_VERSION !== 'undefined') _v.textContent = GAME_VERSION; } catch (e) {}   // 🏷️ 登入頁面版本號：以 GAME_VERSION 為單一真相來源
     try { if (typeof wireBuffEnders === 'function') wireBuffEnders(); } catch (e) {}   // 🔧 藥水/卷軸維持型增益勾選框：取消打勾即立即結束
@@ -1654,7 +1655,6 @@ window.onload = () => {
         // 🛡️ v2.6.69 審計#15：補渲染 reqWpn/skillAddDmg/stun(Chance)——衝擊之暈等技能的機制原本在唯一說明面完全隱形
         if(sk.reqWpn==='w2h') eff.push('限雙手武器（非弓）');
         else if(sk.reqWpn==='bow') eff.push('限弓');
-        else if(sk.reqWpn==='nonbow') eff.push('限非弓武器');
         if(sk.skillAddDmg) eff.push('一般攻擊傷害＋'+sk.skillAddDmg);
         if(sk.stun) eff.push('命中時'+(sk.stunChance!=null?(Math.round(sk.stunChance*100)+'% 機率'):'')+'暈眩');
         if(sk.status) eff.push('附加：'+(STATUS_NAME[sk.status.kind]||sk.status.kind));
@@ -1671,6 +1671,8 @@ window.onload = () => {
             }
             if(s.length) eff.push(s.join('、'));
         }
+        if(sk.desc) eff.push(sk.desc);   // 📜 v3.1.79 稽核修：被動效果說明（戰士印記/王者加護等寫在 desc·原 tooltip 不讀→玩家 hover 看不到效果）
+        if(sk.d && typeof sk.d === 'string') eff.push(sk.d);   // 📜 v3.1.79 稽核修：字串型 d 說明（粉碎能量/心靈破壞·與物件型 d(數值加成) 同名不同型）
         if(eff.length) parts.push(`<div class="text-rose-300" style="font-size:12px;">${eff.join(' ／ ')}</div>`);
         if(sk.msg) parts.push(`<div class="text-slate-400" style="font-size:11px;margin-top:4px;">${sk.msg}</div>`);
         return parts.join('');

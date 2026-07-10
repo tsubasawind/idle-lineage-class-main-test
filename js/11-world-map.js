@@ -1560,6 +1560,10 @@ function interactNPC(npcId, townId) {
         renderIsmaelExchange(contentDiv);
     } else if (npc.id === 'npc_sherine') {
         renderSherinePray(contentDiv);
+    } else if (npc.id === 'npc_io') {
+        renderIoExchange(contentDiv);   // 🦴 v3.1.68 伊奧：席琳結晶兌換遺骸
+    } else if (npc.id === 'npc_lachesis') {
+        renderLachesisSplit(contentDiv);   // 🦴 v3.1.68 菈克希絲：穿著裝備拆分席琳詞綴→遺骸
     } else if (npc.id === 'npc_han') {
         renderHanNPC(contentDiv);
     } else if (npc.id === 'npc_kent_guard') {
