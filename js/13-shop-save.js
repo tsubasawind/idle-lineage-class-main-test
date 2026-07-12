@@ -150,6 +150,14 @@ function chooseElfElement(ele) {
         logSys(`你選擇了 <span class="${ELF_ELE[ele].cls}">${ELF_ELE[ele].name}屬性</span>。`);
     }
     player.elfEle = ele;
+    // 🧝 v3.2.42 稽核修：換屬性時在場屬性精靈立即收回（保留自動重施開關→下個 tick 以新屬性重新現身；原本舊屬性精靈會一直打到死/到期）
+    if ((player._summonV2Sk === 'sk_elf_summon' || player._summonV2Sk === 'sk_elf_summon2')
+        && typeof summonV2List === 'function' && summonV2List().length && typeof summonV2DismissAll === 'function') {
+        const _on = player._summonV2On;
+        summonV2DismissAll(true);
+        player._summonV2On = _on;
+        logSys('屬性精靈隨著屬性的轉換而消散——牠將以新屬性重新現身。');
+    }
     applyElfBorder();
     calcStats();
     renderTabs();
@@ -164,18 +172,18 @@ let _currentShopNpc = ''; // 用來記住目前是哪位商人
 
 // 根據 NPC ID 取得該商人販售的所有物品
 const SHOP_LISTS = {
-    npc_boni: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','new_item_143','candle'],   // 🏴‍☠️ 波尼（海賊島村莊 雜貨商人）
+    npc_boni: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','candle'],   // 🏴‍☠️ 波尼（海賊島村莊 雜貨商人）·🚫 v3.2.17 肉已移除
     npc_linda: ['bk_elf_mr','bk_elf_mind','bk_elf_worldtree','bk_elf_purify','bk_elf_firewpn','bk_elf_windshot','bk_elf_earthguard','bk_elf_eleres','bk_elf_singleres'],
     npc_bayes: ['bk_fireball','bk_vampire','bk_rock_prison','bk_thunder','bk_ice_spike','bk_bless_wpn'],
     npc_gilen: ['bk_heal1','bk_sunlight','bk_shield','bk_lightarrow','bk_teleport','bk_icearrow','bk_windblade','bk_holy_wpn','bk_antidote','bk_cold_shiver','bk_poison_curse','bk_ench_wpn','bk_reveal','bk_load_up','bk_firearrow','bk_hell_fang','bk_heal_mid','bk_shield2','bk_energy_sense','bk_chill','bk_aurora','bk_dark_blind','bk_undead_bane'],
     npc_vangil: ['arm_103','arm_105','arm_108','arm_42','arm_43','hlm_mr','arm_68','arm_66','arm_67','amr_robe','arm_65','arm_63','arm_69','arm_60','arm_61','arm_62','amr_plate'],
     npc_evert: ['new_item_189','new_item_188','new_item_187'],
     npc_wino: ['wpn_shortsword','wpn_9','wpn_scimitar','wpn_37','wpn_invader','wpn_longsword','wpn_damascus','wpn_silversword','wpn_2hsword','wpn_katana','wpn_10','wpn_13','wpn_1','wpn_battleaxe','wpn_19','wpn_38','wpn_20','wpn_silveraxe','wpn_witchwand','wpn_18','wpn_giantaxe','wpn_28','wpn_14','wpn_6','wpn_3','wpn_17','wpn_15','wpn_7','wpn_21','wpn_16','wpn_halberd','wpn_12'],
-    npc_skvati: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','candle','new_item_143','wpn_claw_bronze','wpn_claw_steel','wpn_claw_shadow','wpn_claw_damascus','wpn_dual_bronze','wpn_dual_steel','wpn_dual_shadow','wpn_dual_damascus'],
+    npc_skvati: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','candle','wpn_claw_bronze','wpn_claw_steel','wpn_claw_shadow','wpn_claw_damascus','wpn_dual_bronze','wpn_dual_steel','wpn_dual_shadow','wpn_dual_damascus'],
     npc_saedia: ['bk_dark_str','bk_dark_mrup','bk_dark_stealth','bk_dark_poison','bk_dark_refine','bk_dark_dex','bk_dark_poisonres','bk_dark_burn','bk_dark_walkhaste'],
     npc_sphere: ['mem_confuse','mem_mirror','mem_crush','mem_ogre','mem_focus','mem_skullbreak','mem_lich','mem_endure'],   // 🔮 史菲爾只販賣這 8 種記憶水晶；其餘水晶改由掉落/製作/兌換取得（日光術改由吉蘭購得）
     npc_sempal: ['bk_dragon_guardbreak','bk_dragon_slaughter','bk_dragon_flameslash','bk_dragon_terror'],   // 🐉 森帕爾：4 種龍騎士書板（消滅者鎖鏈劍改為潘朵拉/普洛凱爾試煉取得）
-    default: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','potion_brave','new_item_140','new_item_139','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','new_item_142','candle','new_item_143']
+    default: ['potion_heal','potion_strong','potion_ult','potion_blue','potion_haste','potion_brave','new_item_140','new_item_139','scroll_poly','scroll_magicbarrier','scroll_teleport','scroll_revive','wpn_5','wpn_22','candle']   // 🚫 v3.2.17 哨子/肉已隨舊項圈系統移除
 };
 // 🔧 商店販售清單（單一來源）：getShopItemsForNpc 與潘朵拉權重覆寫共用此表
 function getShopItemsForNpc(npcId) {
@@ -228,8 +236,8 @@ function renderShopItems() {
         let dim = learned || cantLearn;
 
         // 箭矢與肉的顯示判斷
-        let nameDisp = id === 'wpn_5' ? '箭 (1000根)' : (id === 'wpn_22' ? '銀箭 (1000根)' : (id === 'new_item_143' ? '肉 (1000個)' : d.n));
-        let priceDisp = id === 'wpn_5' ? shopPrice(100).toLocaleString() : (id === 'wpn_22' ? shopPrice(200).toLocaleString() : (id === 'new_item_143' ? shopPrice(100).toLocaleString() : shopPrice(d.p || 0).toLocaleString()));
+        let nameDisp = id === 'wpn_5' ? '箭 (1000根)' : (id === 'wpn_22' ? '銀箭 (1000根)' : d.n);
+        let priceDisp = id === 'wpn_5' ? shopPrice(100).toLocaleString() : (id === 'wpn_22' ? shopPrice(200).toLocaleString() : shopPrice(d.p || 0).toLocaleString());
 
         el.innerHTML = `
             <div class="flex items-center gap-4 min-w-0 flex-1 ${dim ? 'opacity-50' : ''}">
@@ -262,7 +270,7 @@ function renderShopItems() {
 function migrateSaves(){
     // 舊單一存檔 → 第1格（既有玩家預設落在存檔1）
     let oldS = _lsGet('lineage_idle_save');
-    if(oldS && !_lsGet('lineage_idle_save_1')) _lsSet('lineage_idle_save_1', oldS);
+    if(oldS && !_lsGet('lineage_idle_save_1')) _lzSetStoredRaw('lineage_idle_save_1', oldS);
 }
 function anySaveExists(){ return ['1','2','3','4','5','6','7','8'].some(n => _lsGet('lineage_idle_save_' + n)); }
 function _summaryFromRaw(s){
@@ -411,7 +419,7 @@ function importSave(n){
             let saveText = text;
             if(whData !== undefined){ let _c = {}; for(let k in d){ if(k !== 'wh') _c[k] = d[k]; } saveText = JSON.stringify(_c); }
             let cur = _lsGet('lineage_idle_save_' + n);
-            if(cur) _lsSet('lineage_idle_save_' + n + '_bak', cur);   // 匯入前自動備份原存檔
+            if(cur) _lzSetStoredRaw('lineage_idle_save_' + n + '_bak', cur);   // 匯入前自動備份原存檔
             _lzSet('lineage_idle_save_' + n, _saveWrap(saveText));   // 💾 匯入 → 以本機簽章重新封裝後壓縮存入（之後讀檔即可驗章）
             // 🔧 詢問是否一併還原共用倉庫（會覆蓋現有倉庫，四個存檔位共用）
             let whMsg = '';
@@ -440,7 +448,7 @@ function restoreBackup(n){
     if(!bak){ alert('沒有可復原的備份。'); return; }
     let b = slotBackupSummary(n);
     if(!confirm(`確定要將存檔 ${n} 復原為匯入前的備份${b ? `（${b.cls} Lv.${b.lv}　${b.name}）` : ''}嗎？\n目前存檔 ${n} 的內容將被取代。`)) return;
-    _lsSet('lineage_idle_save_' + n, bak);
+    if(!_lzSetStoredRaw('lineage_idle_save_' + n, bak)) { alert('復原失敗：瀏覽器儲存空間不足或目前無法寫入。'); return; }
     if(_slotMode === 'load-grid') renderLoadSelect();
     else openSlotSelect(_slotMode);   // 刷新清單
     alert(`存檔 ${n} 已復原為匯入前的備份。`);
@@ -473,6 +481,8 @@ const LOAD_CLASS_TO_START_KEY = {
 let _loadSelectedSlot = 1;
 let _loadPage = 0;
 let _loadAnimState = { key: null, frame: 0, noneFrame: LOAD_NONE_ANIM_FRAMES[0], lastAt: 0, stepMs: 92 };
+let _loadLastClickSlot = 0;
+let _loadLastClickAt = 0;
 function loadEsc(v){
     return String(v === undefined || v === null ? '' : v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
@@ -500,11 +510,13 @@ function openLoadSelect(){
     if(create) create.classList.add('hidden');
     if(oldSlots) oldSlots.classList.add('hidden');
     if(load) load.classList.remove('hidden');
+    _loadLastClickSlot = 0; _loadLastClickAt = 0;
     _loadPage = 0;
     _loadSelectedSlot = [1,2,3,4].find(n => !!slotSummary(n)) || 1;
     renderLoadSelect();
 }
 function loadSetPage(page){
+    _loadLastClickSlot = 0; _loadLastClickAt = 0;
     _loadPage = page === 2 ? 1 : 0;
     const start = _loadPage * 4 + 1;
     const slots = [start, start + 1, start + 2, start + 3];
@@ -514,6 +526,7 @@ function loadSetPage(page){
 function loadBackToMenu(){
     const load = document.getElementById('load-select-panel');
     const main = document.getElementById('main-menu');
+    _loadLastClickSlot = 0; _loadLastClickAt = 0;
     if(load) load.classList.add('hidden');
     if(main) main.classList.remove('hidden');
 }
@@ -580,7 +593,16 @@ function loadSelectSlot(n){
         showCreation();
         return;
     }
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const doubleClick = _loadLastClickSlot === n && now - _loadLastClickAt <= 500;
+    _loadLastClickSlot = doubleClick ? 0 : n;
+    _loadLastClickAt = doubleClick ? 0 : now;
     _loadSelectedSlot = n;
+    if(doubleClick){ loadEnterSelected(); return; }
+    if(document.querySelector(`.load-slot-card.selected[data-slot="${n}"]`)){
+        updateLoadInfo();
+        return;
+    }
     renderLoadSelect();
 }
 function loadCreateSelected(){
@@ -594,6 +616,7 @@ function loadCreateSelected(){
 function loadEnterSelected(){
     const sum = slotSummary(_loadSelectedSlot);
     if(!sum){ loadSelectSlot(_loadSelectedSlot); return; }
+    _loadLastClickSlot = 0; _loadLastClickAt = 0;
     currentSlot = _loadSelectedSlot;
     loadGame();
 }
@@ -835,7 +858,7 @@ function updateCreateUI() {
 
 function onToggleClassic(el) {
     if (!el.checked) return;   // 取消勾選不需確認
-    let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 死亡 → 損失該等級 5% 最大經驗（不會降等）\n‧ 無法賦予裝備祝福、無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n（掉落率、經驗值與金幣獲得皆與一般模式相同）\n\n確定要以「經典模式」創建此角色嗎？');   // ⚠️v3.0.82 經驗×0.5／金幣÷2 已移除、v3.0.85 掉落×1/10 已移除 → 文案同步
+    let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 死亡 → 損失該等級 5% 最大經驗（不會降等）\n‧ 無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n確定要以「經典模式」創建此角色嗎？');   // 🎮 v3.2.9 文案精簡：移除「無法賦予裝備祝福」與「掉落率/經驗值/金幣相同」說明（用戶要求）
     if (!ok) { el.checked = false; return; }
 }
 function startGame() {
@@ -985,10 +1008,42 @@ function updateClassPotionRows() {
 //    loadGame 途中（config 還原在尾端）觸發的 saveGame（如進村領取傭兵經驗）若照舊以「當下 DOM」重建 player.config，
 //    會把靜態預設 UI 寫進存檔、永久洗掉玩家全部自動化設定。未就緒時保留既有 player.config 原樣入檔。
 let _uiConfigReady = false;
+let _saveFailureNotified = false;
+function normalizeFacingRefsForSave() {
+    if(!player) return;
+    if(player._faceTgt) {
+        if(player._faceTgt.uid != null) player._faceTgtUid = player._faceTgt.uid;
+        delete player._faceTgt;
+    }
+    (player.allies || []).forEach(a => {
+        if(a && a._faceTgt) {
+            if(a._faceTgt.uid != null) a._faceTgtUid = a._faceTgt.uid;
+            delete a._faceTgt;
+        }
+    });
+    ((mapState && mapState.mobs) || []).forEach(m => {
+        if(!m || !m._faceTgt) return;
+        if(m._faceTgt === player) m._facePartyKey = 'P';
+        else if(m._faceTgt._slot != null) m._facePartyKey = 'A:' + String(m._faceTgt._slot);
+        delete m._faceTgt;
+    });
+}
+function saveStateJson() {
+    normalizeFacingRefsForSave();
+    // Facing references are normalized above. Avoid a replacer callback for every field in
+    // the save, which becomes noticeably expensive for large inventories and companion data.
+    // 🧙 v3.2.40 稽核修：v2 召喚實體＝戰鬥暫存不入檔（設計即「讀檔後自動重施」）——暫時摘下再復原，
+    //   避免舊怪名殘留在存檔造成讀檔 null-deref，也避免每次讀檔誤報「契約到期」＋存檔肥大。
+    let _sv2 = player.summonsV2;
+    if (_sv2 && _sv2.length) player.summonsV2 = [];
+    try { return JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks }); }
+    finally { if (_sv2 && _sv2.length) player.summonsV2 = _sv2; }
+}
 function saveGame() {
     // 死亡狀態不寫檔：避免把 player.dead=true 存進去，導致下次讀檔卡在死亡狀態而不出怪。
     // 死亡期間沒有可保存的進度，保留上一份「存活」存檔即可。
-    if (player && player.dead) return;
+    if (player && player.dead) return false;
+    try {
     if (typeof sanitizeState === 'function') sanitizeState();   // 🛡️ 寫檔前合理性夾擠：把 runtime(Console)改出的不可能數值夾回合法範圍，連同簽章一起固化、不讓作弊值被存檔/匯出
     // 收集目前的自動化設定 UI 狀態（🛡️ 僅在 UI 已同步時重建；否則沿用記憶體中既有 config）
     if (_uiConfigReady) {
@@ -1029,8 +1084,19 @@ function saveGame() {
     });
     }   // ← _uiConfigReady 閘（審計#1）
 
-    _lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })));   // 🔧 架構#6：寫入存檔版本（🛡️ 加完整性簽章後 💾 LZString 壓縮）   // 🔧 一併保存 tick 計數：召喚物/迷魅的 endTick 為絕對 tick，不存會在重載後失準（迷魅重新計時 1 小時）
+    if(!_lzSet('lineage_idle_save_' + currentSlot, _saveWrap(saveStateJson()))) throw new Error('persistent storage write failed');   // 🔧 寫入成功才回報；並由 saveStateJson 排除戰鬥面向暫存參照
+    if(typeof petRosterSave === 'function' && !petRosterSave()) throw new Error('pet roster write failed');
     logSys(`遊戲進度已儲存。`);
+    _saveFailureNotified = false;
+    return true;
+    } catch(e) {
+        try { console.error('[saveGame] failed', e); } catch(_e) {}
+        if(!_saveFailureNotified && typeof logSys === 'function') {
+            _saveFailureNotified = true;
+            logSys('<span class="text-red-400 font-bold">⚠ 遊戲進度儲存失敗。為保護物品，倉庫存取將暫停；請重新整理後再試。</span>');
+        }
+        return false;
+    }
 }
 
 // 合併同一性物品堆疊（相容舊存檔：修復前被拆分的相同卷軸/物品會重新合併）。
@@ -1064,6 +1130,7 @@ function loadGame() {
     if (s) {
         let d; try { d = JSON.parse(s); } catch(e){ alert('此存檔位的資料已毀損，無法載入。若先前有匯入過，可在載入畫面點「復原備份」還原。'); return; }   // 🛡️ 與其他讀檔點一致：毀損時乾淨報錯而非拋例外卡死
         player = d.p; mapState = d.ms;
+        normalizeFacingRefsForSave();   // 舊存檔若含 v3.2.12 面向物件副本，載入時立即轉為 UID／隊員鍵並移除物件參照
         if (typeof applyGlobalAutoSellSettings === 'function') applyGlobalAutoSellSettings();   // 🔧 v2.6.91 功能5：載入角色時套用全域自動販賣設定（8 角色共用時覆蓋本檔規則）
         if (!player.enSeed) player.enSeed = 'es' + _seedHash((player.name || '') + '|' + (player.cls || '') + '|lz').toString(36);   // 🎲 舊存檔無強化種子：由角色名+職業決定論衍生（重匯入同一份舊檔也得相同種子→不能靠重匯入重洗強化）
         if (typeof sanitizeState === 'function') sanitizeState();   // 🛡️ 讀檔後合理性夾擠（抓改過/竄改的存檔：等級>100、強化值超上限、負金幣等）
@@ -1109,7 +1176,8 @@ function loadGame() {
         // 相容舊存檔：單一 partner → partners 陣列
         if(player.partners === undefined) player.partners = (player.partner ? [player.partner] : []);
         if(player.allies === undefined || !Array.isArray(player.allies)) player.allies = [];   // 協力角色（其他存檔位）
-        if(!Array.isArray(player.petStorage)) player.petStorage = [];   // 🐾 包武寵物保管（項圈，每角色獨立）
+        // 🐾 v3.2.17 夥伴系統 v2：舊項圈/肉/哨子/舊進化果實/舊 petStorage 一次性轉換與清除（項圈→新寵物入共用保管）
+        try { if (typeof petMigrateLegacy === 'function') petMigrateLegacy(); } catch (e) { console.warn('petMigrateLegacy', e); }
         // 相容舊存檔：返生術改為被動技能，清除先前施放殘留的無作用 buff；初始化復活卷軸冷卻
         if(player.buffs) player.buffs.sk_resurrection = 0;
         if(player.buffs && player.buffs.haste >= 999999) player.buffs.haste = 0;   // 修復舊版伊娃之盾殘留的永久加速（改由 _equipHaste 旗標處理）
@@ -1118,6 +1186,9 @@ function loadGame() {
         // 修復舊版「召喚死亡後 buff 未清除」卡關：載入時若目前沒有召喚物，清除殘留的召喚 buff，
         // 讓自動施放能立即重新召喚（不必等死亡復活或 buff 自然倒數）。
         if(player.charmed === undefined) player.charmed = null;   // 相容舊存檔：迷魅獨立槽位
+        if(player.summon && ['sk_zombie', 'sk_elf_summon', 'sk_elf_summon2'].includes(player.summon.skId)) player.summon = null;   // 🧟 v3.2.21 造屍術/屬性精靈改走 v2 實體制：清除舊管線殘留（勾選仍在→v2 自動重新召喚）
+        player.summonsV2 = [];   // 🧙 v3.2.40 稽核修：v2 召喚實體不入檔（本行清 v3.2.39 以前舊檔殘留·防改名 null-deref）·勾選仍在→自動重施
+        if(player.summon && typeof refreshSummonBalance === 'function') refreshSummonBalance(player.summon, player);   // 召喚平衡改版：既有存檔中的召喚物同步新階級倍率、穿透與技能間隔
         if(!player.summon && player.buffs) {
             (player.skills || []).forEach(s => { if(DB.skills[s] && DB.skills[s].summon) player.buffs[s] = 0; });
         }
@@ -1236,6 +1307,7 @@ function loadGame() {
         });
         syncShahaArrow();   // 🏝️ 沙哈之弓：載入時校正無限箭狀態
         calcStats();
+        try { if (typeof _petEnforceCarry === 'function') { _petEnforceCarry(); if (_petRosterDirty) petRosterSave(); } } catch (e) { console.warn('pet carry enforcement', e); }
         applySherineTheme();   // 🔮 還原席琳的世界視覺主題
         changeMap(true);
         renderTabs();
@@ -1288,6 +1360,13 @@ function loadGame() {
                 for (let sid in c.autoBuffSkills) {
                     let chk = document.getElementById(`auto-sk-${sid}`);
                     if (chk) chk.checked = c.autoBuffSkills[sid];
+                }
+                // 🧙 v3.2.42 稽核修：召喚技勾選互斥——舊/手改存檔若同時勾多個召喚技，只保留第一個（防每秒交替施放互洗 MP）
+                let _sumKept = false;
+                for (let sid in c.autoBuffSkills) {
+                    if (!DB.skills[sid] || !DB.skills[sid].summon) continue;
+                    let chk = document.getElementById(`auto-sk-${sid}`);
+                    if (chk && chk.checked) { if (_sumKept) chk.checked = false; else _sumKept = true; }
                 }
             }
         } else {
@@ -1360,18 +1439,12 @@ function confirmRespec() {
     player.alloc = { str:_respec.draft.str, dex:_respec.draft.dex, con:_respec.draft.con, int:_respec.draft.int, wis:_respec.draft.wis, cha:_respec.draft.cha };
     player.panacea = { str:0, dex:0, con:0, int:0, wis:0, cha:0 }; player.panaceaUsed = 0;
     if (used > 0) { gainItem('panacea_white', used, true, true); logSys(`回收已使用的萬能藥，獲得 <span class="text-slate-100 font-bold">純白的萬能藥</span> ×${used}。`); }
-    let collarIds = Object.keys(PET_DEF).map(nm => PET_DEF[nm].collar);
-    let collars = player.inv.filter(i => collarIds.includes(i.id));
-    if (collars.length > 0) {
-        let g = 0, cnt = 0;
-        collars.forEach(i => { g += getSellPrice(i) * (i.cnt || 1); cnt += (i.cnt || 1); });
-        player.inv = player.inv.filter(i => !collarIds.includes(i.id));
-        player.gold += g; player.partners = [];
-        logSys(`重置配點：自動賣出所有項圈共 ${cnt} 個，獲得 <span class="text-yellow-400 font-bold">${g}</span> 金幣。`);
-    }
+    // 🚫 v3.2.17 舊「賣項圈解夥伴」已隨項圈系統移除；改為魅力變動後重新把關出戰寵物（魅力不足者自動收回保管）
     player.bonus = left;
     _respec = null;
-    calcStats(); renderTabs(true); updateUI(); saveGame();
+    calcStats();
+    try { if (typeof _petEnforceCarry === 'function') { _petEnforceCarry(); petRosterSave(); } } catch (e) {}
+    renderTabs(true); updateUI(); saveGame();
     logSys('配點已確認生效。' + (left > 0 ? ` 尚有 <b>${left}</b> 點未分配（已轉為升級點數，可日後再配）。` : ''));
 }
 function cancelRespec() {
@@ -1392,18 +1465,9 @@ function resetStatsCandle() {
     if (_usedPanacea > 0) { gainItem('panacea_white', _usedPanacea, true, true); logSys(`回收已使用的萬能藥，獲得 <span class="text-slate-100 font-bold">純白的萬能藥</span> ×${_usedPanacea}。`); }
     // 可重新分配的點數 = 創角可分配點數 + (等級-49) 升級點數
     player.bonus = b.pts + Math.max(0, player.lv - 49);
-    // 重置點數時：自動賣出背包內所有項圈，並解除對應夥伴
-    let collarIds = Object.keys(PET_DEF).map(nm => PET_DEF[nm].collar);
-    let collars = player.inv.filter(i => collarIds.includes(i.id));
-    if (collars.length > 0) {
-        let g = 0, cnt = 0;
-        collars.forEach(i => { g += getSellPrice(i) * (i.cnt || 1); cnt += (i.cnt || 1); });
-        player.inv = player.inv.filter(i => !collarIds.includes(i.id));
-        player.gold += g;
-        player.partners = [];   // 項圈已全數賣出，解除所有夥伴
-        logSys(`重置配點：自動賣出所有項圈共 ${cnt} 個，獲得 <span class="text-yellow-400 font-bold">${g}</span> 金幣。`);
-    }
+    // 🚫 v3.2.17 舊「賣項圈解夥伴」已隨項圈系統移除；改為魅力歸零後重新把關出戰寵物（魅力不足者自動收回保管）
     calcStats();
+    try { if (typeof _petEnforceCarry === 'function') { _petEnforceCarry(); petRosterSave(); } } catch (e) {}
     updateUI();
     logSys(`所有配點已重置，請重新分配。`);
 }
