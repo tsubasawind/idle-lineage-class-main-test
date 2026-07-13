@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v3.2.60';
+const GAME_VERSION = 'v3.3.15';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -763,10 +763,25 @@ const DB = {
         "relic_tiger_fur":       { n: "虎男的斑紋毛皮",   type: "arm", slot: "cloak",  relic: true, noEnhance: true, ac: 3, resWater: 5, aggroWeight: -1, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】猛虎火焰般的斑紋毛皮，披上便隱入草叢的錯覺。" },
         "relic_cat_paw":         { n: "柔軟的肉球",       type: "arm", slot: "gloves", relic: true, noEnhance: true, ac: 0, dr: 6, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】觸感無上柔軟的貓咪肉球手套，卸去千鈞之力。" },
         "relic_panda_eyes":      { n: "熊貓的黑眼圈",     type: "arm", slot: "helm",   relic: true, noEnhance: true, ac: 4, dr: 3, mr: 8, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】戴上便睡意朦朧的黑眼圈頭飾，以慵懶化解攻勢。" },
+        // ===== 🏺 遺物 第十四批（v3.3.0）：與歐林的定情之戒 ~ 熔岩灼燒的雙拳（單一怪物 0.0001% 掉落·MOB_DROPS/ITEM_WEIGHTS 於 js/01；WEAPON_TAGS 於 js/10） =====
+        "relic_orin_ring":       { n: "與歐林的定情之戒", type: "acc", slot: "ring",   relic: true, noEnhance: true, ac: 1, mdmg: 1, extraMp: 5, mpR: 3, mmp: 30, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】與歐林互許終身的定情之戒，指環間流轉著綿長不絕的魔力。" },
+        "relic_tamer_feedbag":   { n: "馴獸師的飼料袋",   type: "acc", slot: "ring",   relic: true, noEnhance: true, ac: 0, allLures: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】馴獸師隨身的飼料袋，各種野獸聞香而至、俯首認主。裝備時視為持有全部誘捕狀態，卸下即消失。" },
+        "relic_earth_barrier":   { n: "地元素屏障",       type: "arm", slot: "shield", relic: true, noEnhance: true, ac: 4, mr: 10, resEarth: 20, req: "royal,knight,elf,mage,illusion", p: 10000, gachaWeight: 0, d: "【遺物】地元素凝聚而成的護盾，厚土之力抵禦四方衝擊。" },
+        "relic_water_barrier":   { n: "水元素屏障",       type: "arm", slot: "shield", relic: true, noEnhance: true, ac: 1, con: 1, mr: 10, resWater: 20, req: "royal,knight,elf,mage,illusion", p: 10000, gachaWeight: 0, d: "【遺物】水元素流轉而成的護盾，柔波之力承接一切鋒芒。" },
+        "relic_fire_barrier":    { n: "火元素屏障",       type: "arm", slot: "shield", relic: true, noEnhance: true, ac: 1, str: 1, mr: 10, resFire: 20, req: "royal,knight,elf,mage,illusion", p: 10000, gachaWeight: 0, d: "【遺物】火元素燃燒而成的護盾，烈焰之力灼退進犯之敵。" },
+        "relic_wind_barrier":    { n: "風元素屏障",       type: "arm", slot: "shield", relic: true, noEnhance: true, ac: 1, dex: 1, mr: 10, resWind: 20, req: "royal,knight,elf,mage,illusion", p: 10000, gachaWeight: 0, d: "【遺物】風元素環繞而成的護盾，疾風之力卸去來襲之勢。" },
+        "relic_ghoul_fang":      { n: "兇殘惡鬼的毒牙",   type: "wpn", relic: true, noEnhance: true, dmgS: 9, dmgL: 11, hit: 15, dmgBonus: 15, ele: "earth", eleBonusDmg: { ele: "wind", add: 10 }, req: "royal,knight,elf,mage,dark,dragon", p: 10000, gachaWeight: 0, d: "【遺物】殘暴食屍鬼口中兇殘的毒牙，咬痕間纏繞著克制疾風的地脈之力。" },
+        "relic_sparto_shard":    { n: "殘暴骸骨的破片",   type: "wpn", relic: true, noEnhance: true, dmgS: 4, dmgL: 5, hit: 14, dmgBonus: 13, unBonus: true, req: "royal,knight,elf,mage,dark,dragon", p: 10000, gachaWeight: 0, d: "【遺物】殘暴史巴托碎裂的骸骨破片，殘存著獵殺不死生物與狼人的執念。" },
+        "relic_corpse_needle":   { n: "屍毒之針",         type: "wpn", isBow: true, ranged: true, oneHand: true, rapidfire: 65, relic: true, noEnhance: true, dmgS: 3, dmgL: 2, hit: 16, dmgBonus: 15, procStatusSkill: { skId: "sk_relic_paralyze", rate: 3 }, immParalyzeBonusDmg: 5, req: "knight,elf,dark,illusion", p: 10000, gachaWeight: 0, d: "【遺物】淬滿屍毒的細針，可單手持握、連射如雨，麻痺獵物後仍能刺穿其頑強的抵抗（需裝備箭矢）。" },
+        "relic_morph_blade":     { n: "不定形的變幻劍",   type: "wpn", w2h: true, chainsword: true, weakExpose: true, relic: true, noEnhance: true, dmgS: 21, dmgL: 17, hit: 17, dmgBonus: 15, str: 1, counterAllEle: true, req: "dragon", p: 10000, gachaWeight: 0, d: "【遺物】不斷變幻形貌的鎖鏈劍，能隨敵人的力量改變姿態，反制地、水、火、風四大屬性。" },
+        "relic_croc_leather":    { n: "巨大鱷魚的皮革盔甲", type: "arm", slot: "armor", relic: true, noEnhance: true, ac: 15, weightCap: 250, dr: 5, mhp: 50, req: "elf,dark,dragon,illusion", p: 10000, gachaWeight: 0, d: "【遺物】巨大鱷魚厚實皮革縫製的盔甲，堅韌耐重，足以卸去迎面而來的鋒芒。" },
+        "relic_kasta_hump":      { n: "妖鬼王的畸形背瘤", type: "arm", slot: "cloak", relic: true, noEnhance: true, ac: 12, hpR: 10, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】卡司特王背上腫脹的畸形背瘤，搏動之間源源不絕地湧出生機。" },
+        "relic_pirate_dual":     { n: "傳說海賊的迷幻雙刀", type: "wpn", w2h: true, relic: true, noEnhance: true, ignHardSkin: true, dmgS: 15, dmgL: 10, hit: 18, dmgBonus: 16, eff: "combo", comboRate: 30, ele: "water", dex: 3, req: "dark", p: 10000, gachaWeight: 0, d: "【遺物】傳說海賊珍藏的迷幻雙刀，刃光如潮，交錯之間翻湧著深海的幻影。" },
+        "relic_lava_fists":      { n: "熔岩灼燒的雙拳",   type: "wpn", relic: true, noEnhance: true, ignHardSkin: true, dmgS: 15, dmgL: 15, hit: 12, dmgBonus: 13, unBonus: true, ele: "fire", procBurn: { dmg: 20, dur: 6 }, req: "warrior", p: 10000, gachaWeight: 0, d: "【遺物】熔岩高崙熔鑄的雙拳，一擊裂地，灼熱拳痕會在敵人身上持續燃燒。" },
         "relic_pup_fang":        { n: "幼犬的稚嫩犬齒",   type: "acc", slot: "ear",    relic: true, noEnhance: true, ac: 1, meleeDmg: 1, rangedDmg: 1, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】高麗幼犬換牙時掉落的小小犬齒，蘊含初生之銳。" },
         "relic_raccoon_leaf":    { n: "浣熊的變身葉",     type: "arm", slot: "helm",   relic: true, noEnhance: true, ac: 2, polyAtkSpdPct: 20, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】浣熊變身戲法用的神奇樹葉，頂在頭上就能幻化萬千。" },
-        "relic_stbernard_barrel":{ n: "聖伯納的急救酒桶", type: "acc", slot: "neck",   relic: true, noEnhance: true, ac: 0, lowHpPotionX2: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】聖伯納犬掛在頸間的救難小酒桶，危急時刻滴滴救命。" },
-        "relic_fox_scarf":       { n: "貴重狐毛圍巾",     type: "acc", slot: "neck",   relic: true, noEnhance: true, ac: 0, mr: 10, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】以整條狐尾織成的華貴圍巾，軟毛間流轉抗魔的靈氣。" },
+        "relic_stbernard_barrel":{ n: "聖伯納的急救酒桶", type: "acc", slot: "amulet", relic: true, noEnhance: true, ac: 0, lowHpPotionX2: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】聖伯納犬掛在頸間的救難小酒桶，危急時刻滴滴救命。" },
+        "relic_fox_scarf":       { n: "貴重狐毛圍巾",     type: "acc", slot: "amulet", relic: true, noEnhance: true, ac: 0, mr: 10, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】以整條狐尾織成的華貴圍巾，軟毛間流轉抗魔的靈氣。" },
         "relic_rabbit_foot":     { n: "幸運暴走兔腳",     type: "acc", slot: "ear",    relic: true, noEnhance: true, ac: 0, relicDropX2: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】傳說中招來厄運之外一切好運的兔腳護符。" },
         "relic_beagle_nose":     { n: "小獵犬的追蹤鼻",   type: "acc", slot: "ear",    relic: true, noEnhance: true, ac: 0, trackBoost: true, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】小獵犬引以為傲的靈敏鼻子做成的護符，氣味無所遁形。" },
         "relic_collie_fur":      { n: "柯利的柔毛",       type: "arm", slot: "shin",   relic: true, noEnhance: true, ac: 1, mr: 5, dr: 1, req: "all", p: 10000, gachaWeight: 0, d: "【遺物】柯利牧羊犬蓬鬆柔毛織成的護脛，溫暖而堅韌。" },
@@ -2338,7 +2353,7 @@ const DB = {
                 { id: "npc_wh_aden", n: "恬金", title: "倉庫", type: "warehouse", d: "存放物品與金幣，四個存檔角色共用。" },
                 { id: "npc_upni", n: "烏普尼", title: "製作", type: "craft", d: "通曉禁忌符文的烏普尼，能將塔之力封入一紙。以 傲慢之塔傳送符 與 移動卷軸 製作 傲慢之塔支配符。" },
                 { id: "npc_norse", n: "諾斯", title: "寵物裝備製作", type: "craft", d: "獸語匠人諾斯，懂得讓忠犬之牙更加銳利。鍛造寵物裝備，強化你的寵物。" },
-                { id: "npc_baowu", n: "包武", title: "寵物保管", type: "petstore", d: "和善的看護人包武，願替遠行的旅人照看捕獲的寵物。最多保管 20 隻（同模式角色共通）；可在此讓寵物出戰、鎖定、放生，或讓等級 30 以上的寵物進化（基礎寵物需進化果實、高等寵物需勝利果實·黃金龍除外）。" }
+                { id: "npc_baowu", n: "包武", title: "寵物保管", type: "petstore", d: "和善的看護人包武，願替遠行的旅人照看捕獲的寵物。最多保管 20 隻（同模式角色共通）；可在此讓寵物出戰、鎖定、放生，或讓等級 30 以上「一般型態」的寵物進化——用進化果實→對應高等，或用勝利果實→黃金龍（兩種果實都帶著時可自選）；高等型態與黃金龍皆為最終型態。" }
             ]
         },
         "town_pride": {

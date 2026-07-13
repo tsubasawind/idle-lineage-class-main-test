@@ -42,14 +42,12 @@ function gameLoop() {
     if(elapsed > MAX_CATCHUP_MS) elapsed = MAX_CATCHUP_MS; // 上限保護
     _tickDebt += elapsed;
 
-    // Split long background catch-up into bounded batches. Processing the full five-minute
-    // allowance (3000 combat ticks) in one callback can freeze clicks and make saving appear stuck.
-    const MAX_TICKS_PER_LOOP = 100;
-    let n = Math.min(MAX_TICKS_PER_LOOP, Math.floor(_tickDebt / TICK_MS));
-    _tickDebt -= n * TICK_MS;
-    if(n <= 0) return;
+    // 補跑排程：owed = 目前積欠的 tick 數。即時遊玩恆為 1；切分頁/背景降速回來時可能累積上千。
+    let owed = Math.floor(_tickDebt / TICK_MS);
+    if(owed <= 0) return;
 
-    if(n === 1) {           // 正常情況：每 100ms 跑一個 tick
+    if(owed === 1) {           // 正常情況：每 100ms 跑一個 tick
+        _tickDebt -= TICK_MS;
         // 🔧 前景即時遊玩不顯示金幣（金幣不逐殺輸出，也不在即時累積）；金幣僅於背景補跑回來時由 flushAwaySummary 彙整顯示。
         flushAwaySummary(); // 回到即時：若先前累積了補跑所得，於此統一輸出一次
         state.inTick = true;   // 🔧 架構#2：tick 期間的擊殺只標記，結束後統一清算
@@ -61,23 +59,37 @@ function gameLoop() {
     // 需要補跑多個 tick：期間關閉逐 tick 的畫面刷新與戰鬥訊息，跑完再統一刷新一次
     // 補跑期間 logSys 被靜音，先記錄背包與金幣，補跑後把增量「累積」起來（不立即輸出，
     // 避免計時抖動/背景降速造成每次小補跑都洗一行訊息）。達門檻並回到即時後由 flushAwaySummary 統一輸出。
+    // 🚀 v3.2.78 補跑改「計算時間預算」榨乾：因 state.ff 期間已完全壓掉重繪/動畫/特效，每個 tick 很便宜，
+    //   不再硬性 100 tick/次上限（舊制會讓長時間離開回來後每次迴圈只補 100 tick、要慢慢跑好幾秒甚至十幾秒）。
+    //   改成一路補到本次呼叫累計花掉 ~CATCHUP_BUDGET_MS 才讓步，剩下的留給下一個 100ms 迴圈。
+    //   掛機收益一格不少（不裁切 _tickDebt，只扣真正跑掉的 tick），只是追平得更快、且 UI 仍保持回應。
+    const CATCHUP_BUDGET_MS = 40;   // 每次呼叫最多花在補跑的主執行緒時間（其餘留給點擊/存檔/瀏覽器繪製）
+    const HARD_TICK_CAP = 6000;     // 單次呼叫保底硬上限（防極端情況一次迴圈跑過久）
+    const _catchStart = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     const _invBefore = {};
     player.inv.forEach(i => { _invBefore[i.id] = (_invBefore[i.id] || 0) + i.cnt; });
     const _goldBefore = player.gold;
 
     state.ff = true;
     state.inTick = true;   // 🔧 架構#2：補跑期間同樣每個 tick 結束才清算死亡
+    let ran = 0;
     try {
-        for(let k=0; k<n; k++) {
+        while(ran < owed && ran < HARD_TICK_CAP) {
             if(!state.running || player.dead) break;
             tick();
             settleDeadMobs();   // 每個 tick 結束即清算，下一個 tick 以遞補完成的場面開始
+            ran++;
+            if((ran & 15) === 0) {   // 每 16 tick 量一次時間（省 performance.now 呼叫成本）；達預算即讓步
+                let _el = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - _catchStart;
+                if(_el >= CATCHUP_BUDGET_MS) break;
+            }
         }
     } finally {
         state.ff = false;   // 保證即使 tick() 拋例外也會解除補跑旗標，避免畫面/出怪永久凍結
         state.inTick = false;
         settleDeadMobs();   // 保底：例外中斷時也完成清算
     }
+    _tickDebt -= ran * TICK_MS;   // 只扣真正跑掉的 tick；未跑完的留待下一個迴圈繼續補
 
     // 將這次補跑的淨增量併入累積（以前後數量差計算，含被消耗者的負值，最終只輸出淨正值）
     const _invAfter = {};
@@ -89,7 +101,7 @@ function gameLoop() {
     });
     let _goldGain = player.gold - _goldBefore;
     if (_goldGain > 0) _awayAcc.gold += _goldGain;
-    _awayAcc.ticks += n;
+    _awayAcc.ticks += ran;
 
     // 補跑結束，統一刷新畫面（累積所得於下一個即時 tick 開頭由 flushAwaySummary 統一輸出）
     updateUI(); renderMobs(); renderTabs();
@@ -446,6 +458,8 @@ function tick() {
                     : Math.max(1, Math.floor((roll(_h.valDice[0], _h.valDice[1]) + (_h.magicDmg || 0)) * (_h.healMult || 1)));   // 🏺 v3.1.80 治癒者的恢復魔棒：施放者持有 hotHealMult 武器→每跳回復 ×2（施放時快照在 HoT 實例）
                 player.hp = Math.min(player.mhp, player.hp + heal);   // 🔧 水之元氣不套用於持續回復(HoT)
                 _hotAllies.forEach(a => { a.curHp = Math.min(a.mhp || 1, (a.curHp || 0) + heal); });   // 🍃 全體傭兵同步回復
+                try { if (typeof petsOutList === 'function') petsOutList().forEach(p => { if (p && !p._downed && (p.hp || 0) > 0) p.hp = Math.min(p.mhp || 1, (p.hp || 0) + heal); }); } catch (e) {}   // 🩹 v3.2.67 團隊 HoT 也回復出戰寵物
+                try { if (typeof summonV2List === 'function') summonV2List().forEach(s => { if (s && !s._downed && (s.hp || 0) > 0) s.hp = Math.min(s.mhp || 1, (s.hp || 0) + heal); }); } catch (e) {}   // 🩹 v3.2.67 團隊 HoT 也回復召喚物
                 _h.ticksLeft--;
                 logCombat(`${_h.skName} 為全隊回復了 ${heal} 點 HP。${_h.msg || ''}`, 'heal');
                 if(_h.ticksLeft <= 0) { delete player.hots[_hsk]; logCombat(`${_h.skName} 的持續回復效果結束。`, 'heal'); }
@@ -852,7 +866,9 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     _outDmg = Math.max(1, Math.floor(_outDmg * fragileMult(target)));   // 🔮 脆弱（白鳥5）：受所有來源傷害 +20%
     _outDmg = Math.max(1, Math.floor(_outDmg * wpnEnFinalMult(wpnInst || player.eq.wpn)));   // 🔧 武器強化最終傷害倍率；🛡️ v2.6.69 審計#14：有傳 wpnInst（如迅猛雙斧副手揮擊傳 offwpn）就用「該武器自身」的強化與分級，不再硬吃主手倍率
     _outDmg = Math.max(1, Math.floor(_outDmg * rlFuryMult()));   // 🔮 紅獅5/5(×1.2)＋😡狂怒5/5：最終傷害（普攻及所有走本函式的物理攻擊：反擊/居合/看破/連擊/連射/穿透/魔擊/物理技能）
-    _outDmg = Math.max(1, Math.floor(_outDmg * elementCounterMult(_wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId]), target.e)));   // ⚔️ 屬性剋制：屬性詞綴優先，否則取揮擊武器基底 ele（「一般攻擊轉為X屬性」遺物·與傭兵路徑 js/06 getWpnEle 對齊·v3.1.33 稽核修）剋怪 ×1.4、被剋 ×0.6（無屬性→×1）
+    { let _ecm = elementCounterMult(_wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId]), target.e);
+      if (wpn && wpn.counterAllEle && target.e && target.e !== 'none') _ecm = Math.max(_ecm, 1.4);   // 🏺 不定形的變幻劍：一般攻擊剋制地/水/火/風一切屬性之敵（強制 ≥×1.4）
+      _outDmg = Math.max(1, Math.floor(_outDmg * _ecm)); }   // ⚔️ 屬性剋制：屬性詞綴優先，否則取揮擊武器基底 ele（「一般攻擊轉為X屬性」遺物·與傭兵路徑 js/06 getWpnEle 對齊·v3.1.33 稽核修）剋怪 ×1.4、被剋 ×0.6（無屬性→×1）
     if (target && target._fireVulnUntil > state.ticks && (_wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId])) === 'fire') _outDmg = Math.max(1, Math.floor(_outDmg * 1.3));   // 🏺 遺物 灼熱蜥蜴長舌：目標帶火屬性弱點時受火屬性攻擊 +30%
     if (_natRoll && player.d.eleWpnMult && (_wAff ? _wAff.ele : getWpnEle(null, DB.items[_swingId])) === player.d.eleWpnMult.ele) _outDmg = Math.max(1, Math.floor(_outDmg * player.d.eleWpnMult.mult));   // 🏺 v3.1.80 四之牙臂甲：裝備對應屬性武器時一般攻擊傷害 ×1.2（僅自然骰＝一般攻擊/雙擊/連射/穿透·屬性詞綴優先於基底 ele）
     if (heavy && player.mastery === 'k_cleave' && _cw && _cw.eff === 'cleave') _outDmg = Math.max(1, Math.floor(_outDmg * 1.5));   // 🏅 切割精通：觸發重擊時傷害 ×1.5
