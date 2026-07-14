@@ -56,6 +56,9 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     necro_king_room: 'assets/area/軍王之室.jpg',    // 👑 冥法軍王之室
     assassin_king_room: 'assets/area/軍王之室.jpg', // 👑 暗殺軍王之室
     elder_room: 'assets/area/軍王之室.jpg',         // 🏛️ 格蘭肯神殿．長老之室（無專屬背景圖·借用軍王之室背景）
+    dark_elf_sanctuary: 'assets/area/1920x1080/黑暗妖精聖地.jpg',
+    cursed_dark_elf_sanctuary: 'assets/area/1920x1080/受詛咒的黑暗妖精聖地.jpg',
+    collapsed_elder_council_hall: 'assets/area/1920x1080/崩壞的長老會議廳.jpg',   // 🌑 v3.3.33 長老會議廳改為安全區 town_elder_council（背景走 TOWN_BG_1920）
     thebes_desert: 'assets/area/底比斯沙漠.jpg',   // 🏛️ 底比斯 沙漠（專屬背景）
     thebes_pyramid: 'assets/area/底比斯.jpg',      // 🏛️ 底比斯 金字塔內部（與祭壇共用底比斯背景）
     thebes_temple: 'assets/area/底比斯.jpg',        // 🏛️ 底比斯 歐西里斯祭壇（純BOSS房）
@@ -86,7 +89,8 @@ const TOWN_BG_1920 = {
     town_elf: '妖精森林村莊', town_talking: '說話之島村莊', town_gludio: '燃柳村莊', town_witon: '威頓村莊',
     town_hyperia: '希培利亞', town_silver_knight: '銀騎士村莊', town_ivory_tower: '象牙塔（1~3樓）',
     town_sherine: '席琳神殿', town_silent: '沉默洞穴', town_behemoth: '貝希摩斯', town_flame_audience: '炎魔謁見所',
-    town_pride: '傲慢之塔1樓', town_rift: '時空裂痕入口', town_pirate_village: '海賊島村莊'
+    town_pride: '傲慢之塔1樓', town_rift: '時空裂痕入口', town_pirate_village: '海賊島村莊',
+    town_elder_council: '長老會議廳'   // 🌑 v3.3.33 黑暗妖精聖地樞紐安全區
 };
 function mapDisplayName(v) { for (let _c in MAP_CATEGORIES) { let _e = MAP_CATEGORIES[_c].find(x => x.v === v); if (_e) return _e.t; } return null; }
 function applyAreaBackground() {
@@ -782,7 +786,8 @@ function setCreationClassAnimation(c){
     function tick(now){
         const panel = document.getElementById('creation-panel');
         const img = document.getElementById('class-preview-img');
-        if(panel && img && !panel.classList.contains('hidden') && !creationClassAnim.static && now - creationClassAnim.lastAt >= creationClassAnim.stepMs){
+        const gs = document.getElementById('game-screen');   // 🔊 v3.4.17 已進遊戲→停創角動畫（防 creation-panel classList 殘留→動畫續跑並每 loop 重觸發創角音效）
+        if(panel && img && !panel.classList.contains('hidden') && (!gs || gs.classList.contains('hidden')) && !creationClassAnim.static && now - creationClassAnim.lastAt >= creationClassAnim.stepMs){
             creationClassAnim.frame = creationClassAnim.frame >= creationClassAnim.last ? creationClassAnim.first : creationClassAnim.frame + 1;
             img.src = `assets/start/${creationClassAnim.key}/${creationClassAnim.frame}.png`;
             if(creationClassAnim.frame === creationClassAnim.first && typeof playCreationFrameSfx === 'function') playCreationFrameSfx(creationClassAnim.key, creationClassAnim.frame);
@@ -911,6 +916,10 @@ function onToggleClassic(el) {
 function startGame() {
     if(!curCreate.cls || !curCreate.rawCls) return;
     if(typeof stopCreationFrameSfx === 'function') stopCreationFrameSfx();
+    // 🔊 v3.4.17 進遊戲：隱藏 creation-panel（原本只隱藏 creation-screen 父層·子面板 classList 無 .hidden 殘留）＋停創角動畫。
+    //    否則 _bgmIsCreateScreen()(js/17) 與創角逐幀動畫 tick(下方 animateCreationClassPreview) 都看 creation-panel→誤判「還在創角」→登入/創角 BGM 一直播、創角音效每 loop 重觸發。
+    { let _cp = document.getElementById('creation-panel'); if(_cp) _cp.classList.add('hidden'); }
+    creationClassAnim.static = true;   // 立即停創角動畫迴圈（免離開畫面仍每幀更新 img＋每 loop 重觸發 SFX）
     document.getElementById('creation-screen').classList.add('hidden');
     document.getElementById('game-screen').classList.remove('hidden');
     document.body.classList.add('game-bg-dim');   // 正式遊戲後：背景淡化
@@ -1201,6 +1210,9 @@ function purgeOrphanItems() {
 
 function loadGame() {
     _uiConfigReady = false;   // 🛡️ 審計#1：載入期間 DOM 仍是上一個畫面/預設值，禁止 saveGame 以它重建 config
+    // 🐾 v3.3.16 換角色前：先把上一角色未存的寵物進度 flush 進共用桶，再失效記憶體快取→新角色 petRoster() 從桶重載（防跨角色髒鏡像互洗裝備/出戰）。
+    try { if (typeof _petRosterDirty !== 'undefined' && _petRosterDirty && player && player.cls && typeof petRosterSave === 'function') petRosterSave(); } catch (e) {}
+    try { if (typeof _petRosterKey !== 'undefined') _petRosterKey = null; } catch (e) {}
     let _u = _saveUnwrap(_lzGet('lineage_idle_save_' + currentSlot));   // 🛡️ 解存檔簽章（舊明文存檔 signed:false 照常載入）
     if (_u.signed && !_u.ok) { alert('此存檔的完整性校驗未通過，可能已被外部修改，無法載入。\n可在載入畫面點「復原備份」還原，或改用未被修改的存檔。'); return; }   // 🛡️ 簽章不符＝被竄改：拒絕載入
     let s = _u.payload;

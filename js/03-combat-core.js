@@ -155,6 +155,14 @@ function applyPlayerHitstun() {
 function tick() {
     if(!state.running || player.dead) return;
     state.ticks++;
+    // 🪄 吉爾塔斯魔杖：擊殺增益到期即重算，避免額外魔法點數停留在衍生能力中。
+    let _giltasWandExpired = [];
+    if (player._giltasWandFuryUntil && state.ticks >= player._giltasWandFuryUntil) { player._giltasWandFuryUntil = 0; _giltasWandExpired.push(player); }
+    if (player.allies && player.allies.length) player.allies.forEach(a => { if (a && a._giltasWandFuryUntil && state.ticks >= a._giltasWandFuryUntil) { a._giltasWandFuryUntil = 0; _giltasWandExpired.push(a); } });
+    if (_giltasWandExpired.length) {
+        if (_giltasWandExpired.includes(player)) calcStats();
+        _giltasWandExpired.forEach(a => { if (a !== player && typeof _allyLevelRecompute === 'function') _allyLevelRecompute(a); });
+    }
     _combatSrc = null;   // ⚔️ 戰鬥日誌來源：每 tick 起始重置（玩家攻擊/施法/DoT 等預設依顏色type推定；友方派發點會各自設定）
     _dpsAllyTurn = false; let _dpsPlayerSnap = _dpsSnap();   // 🎯 DPS：玩家階段起點快照（至怪物行動前的所有掉血＝玩家輸出·含自動施法/持續增益）
     castleGuardTick();   // 🏰 城堡護衛：回血/力竭恢復/城堡擁有結束自動解散
@@ -399,7 +407,7 @@ function tick() {
         if(m.curHp <= 0) continue;   // 反擊使該怪在自己回合內死亡 → 跳過後續魔法施放
         if(m.st && (m.st.vacuum > 0 || m.st.magicseal > 0)) continue; // 真空 / 魔法封印：無法施放技能
         if(!m._magCd) m._magCd = {};
-        ['mag','mag2','mag3'].forEach(mk => {
+        ['mag','mag2','mag3','mag4'].forEach(mk => {   // 🌑 v3.3.33 mag4：吉爾塔斯第四技（血壁空間）
             if(!m[mk]) return;
             // 檢查發動機率
             if(m[mk].chance !== undefined) {
@@ -523,7 +531,7 @@ const KING_ROOMS = {
     // 🐍 提卡爾 庫庫爾坎祭壇：雙BOSS（杰弗雷庫雄＋雌），入場與再臨各消耗 1 把提卡爾庫庫爾坎祭壇鑰匙
     tikal_altar:        { dual: true, bosses: ['tikal_boss_m', 'tikal_boss_f'], key: 'item_tikal_altar_key', name: '提卡爾 庫庫爾坎祭壇' }
 };
-const PURE_BOSS_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room', 'thebes_temple', 'tikal_altar'];
+const PURE_BOSS_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room', 'thebes_temple', 'tikal_altar', 'cursed_dark_elf_sanctuary', 'collapsed_elder_council_hall'];   // 🌑 v3.3.33 受詛咒的黑暗妖精聖地(吉爾塔斯)／崩壞的長老會議廳(冥皇丹特斯)＝龍窟式單BOSS房（只生中央·死後5秒重生·由長老會議廳NPC進入）
 const BOSS_BIG_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair'];   // 👑 方案B放大版面只套用這3個龍窟(不含底比斯祭壇等其餘純BOSS房)
 
 // 🆕 後排雙格：一般狩獵地圖在原本三格(前排)之外，再追加兩格「後排」小怪→場上最多同時 5 隻。
@@ -722,8 +730,16 @@ function spawnMob(idx) {
         if(base.n === _sc.gate && player.siege.gateHp > 0) mapState.mobs[idx].curHp = Math.min(mapState.mobs[idx].hp, player.siege.gateHp);
         if(base.n === _sc.tower && player.siege.towerHp > 0) mapState.mobs[idx].curHp = Math.min(mapState.mobs[idx].hp, player.siege.towerHp);
     }
+    // 🌑 v3.3.33 吉爾塔斯 HP 保留（黑暗妖精聖地.md）：戰敗時持完整的召喚球→js/05 revive 消耗 1 顆並記錄 player.giltasKeep；
+    //    下次進入受詛咒聖地首次生成時還原 HP（一次性·還原即清除→之後離開再進＝全新吉爾塔斯）
+    if(mobId === 'sanct_giltas' && player.giltasKeep && player.giltasKeep.hp > 0) {
+        mapState.mobs[idx].curHp = Math.min(mapState.mobs[idx].hp, player.giltasKeep.hp);
+        player.giltasKeep = null;
+        logSys('<span class="text-red-300">完整的召喚球之力仍束縛著吉爾塔斯——牠的傷勢沒有癒合！</span>');
+    }
 
     applySherineGrace(idx);   // 🔮 席琳的恩賜：1% 機率場上一隻一般怪變恩賜怪（與時空裂痕共用 applySherineGrace）
+    if (base.boss && typeof vfxBossEntrance === 'function') { try { vfxBossEntrance(mapState.mobs[idx]); } catch (e) {} }   // 🐉 v3.4.6 四大龍＋吉爾塔斯／冥皇丹特斯出場：酷炫特效＋螢幕震動（cosmetic·函式內部只吃這 6 名·吃 __vfxOff/補跑）
     renderMobs();
 }
 
@@ -783,7 +799,7 @@ function stretchHitValue(raw) {
     let hvInt = lo + ((Math.random() < (hv - lo)) ? 1 : 0);
     return Math.max(1, Math.min(20, hvInt));
 }
-function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, forceLand, forceCrit, wpnInst) {
+function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, forceLand, forceCrit, wpnInst, forceGraze) {
     let isRanged = !!(wpn && wpn.ranged);
     let hitBonus = (isRanged ? player.d.rangedHit : player.d.meleeHit) + player.d.extraHit + (player._skillHitBonus || 0) + (player._setBeauty5 ? (player._beautyMissStack || 0) : 0);   // 🗼 范德之劍：施展衝擊之暈時本次技能近距離命中+1；🔮 麗人5/5：未命中堆疊命中
     let dmgBonus = (isRanged ? player.d.rangedDmg : player.d.meleeDmg);
@@ -801,7 +817,8 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     let isCrush = !!(_cw && _cw.eff === 'crush');
     let rollHit = roll(1, 20);
     let hit = false, heavy = false, graze = false, crush = false;
-    if (forceHeavy) { hit = true; heavy = true; }   // 魔擊：必定命中且必定重擊
+    if (forceGraze) { hit = true; graze = true; }   // 🏺 水精靈王的撫摸：原本未命中時依機率改判為 50% 擦傷
+    else if (forceHeavy) { hit = true; heavy = true; }   // 魔擊：必定命中且必定重擊
     else if (forceHit) { hit = true; }   // 反擊：必定命中、必定非重擊
     else if (forceLand) { hit = true; if (rollHit === 20) heavy = true; }   // 居合：必定命中，rollHit20 仍自然重擊；不擦傷
     else if (rollHit === 20) { hit = true; heavy = true; }
@@ -860,6 +877,8 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     }
     // 🏺 v3.1.80 傑克的彈弓：對「巨人」種族加成 +1D20（與 unBonus 同模型·獨立於不死/狼人加成·裝箭矢時亦生效）
     if (wpn && wpn.giantBonus && target.race === '巨人') fixed += roll(1, 20);
+    // 🗡️ v3.4.0 吉爾塔斯之劍：擊殺敵人後 10 秒內額外傷害 +10（killMob 寫 _giltasFuryUntil·刷新制）
+    if (player._giltasFuryUntil > state.ticks && _swingId === 'wpn_giltas_sword') fixed += 10;
 
     let _outDmg = inner + fixed;
     if (graze) _outDmg = Math.max(1, Math.floor(_outDmg * 0.5));   // 擦傷：最終傷害剩 50%
@@ -927,7 +946,7 @@ function consumeArrow() {
 }
 
 // ===== 法杖共鳴：裝備指定魔法杖時，一般攻擊(不論命中與否)有 智力/60 機率免費施展光箭 =====
-const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless', 'wpn_wand_rasta', 'wpn_red_crystalwand', 'wpn_laia_wand', 'wpn_icequeen_wand', 'wpn_demon_scythe', 'wpn_darkmage_wand', 'wpn_baphomet_wand', 'wpn_illu_wand', 'wpn_demon_wand_hidden', 'wpn_dark_crystalball', 'wpn_steel_manawand_blue', 'relic_amp_staff', 'relic_elder_thunder', 'relic_cerberus_wand', 'relic_evillizard_eye', 'relic_lightbeam_wand', 'relic_warlock_grimoire'];   // 🏺 遺物 安普長老的拐杖／長老的雷電能量／三頭犬魔杖／邪惡蜥蜴的眼瞳／光束強化魔杖亦共鳴 // 🔮 幻術士魔杖：共鳴（👹 隱藏的魔族魔杖亦共鳴；🏴‍☠️ 漆黑水晶球亦共鳴）   // 🏅 共鳴：含蕾雅魔杖／冰之女王魔杖／惡魔鐮刀／黑法師之杖／🔧巴風特魔杖（👑惡魔王魔杖已改為魔爆 eff:magicburst）
+const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless', 'wpn_wand_rasta', 'wpn_red_crystalwand', 'wpn_laia_wand', 'wpn_icequeen_wand', 'wpn_demon_scythe', 'wpn_darkmage_wand', 'wpn_baphomet_wand', 'wpn_illu_wand', 'wpn_demon_wand_hidden', 'wpn_dark_crystalball', 'wpn_steel_manawand_blue', 'relic_amp_staff', 'relic_elder_thunder', 'relic_cerberus_wand', 'relic_evillizard_eye', 'relic_lightbeam_wand', 'relic_warlock_grimoire', 'relic_windking_roar', 'relic_rockmage_secret'];   // 🏺 遺物 安普長老的拐杖／長老的雷電能量／三頭犬魔杖／邪惡蜥蜴的眼瞳／光束強化魔杖／風精靈王的狂嘯／破岩法師的秘術亦共鳴 // 🔮 幻術士魔杖：共鳴（👹 隱藏的魔族魔杖亦共鳴；🏴‍☠️ 漆黑水晶球亦共鳴）   // 🏅 共鳴：含蕾雅魔杖／冰之女王魔杖／惡魔鐮刀／黑法師之杖／🔧巴風特魔杖（👑惡魔王魔杖已改為魔爆 eff:magicburst）
 function wandLightArrowProc(target) {
     if (player.classicMode) return;   // 🎮 經典模式：停用共鳴
     let wpn = player.eq.wpn;
@@ -1089,11 +1108,11 @@ function magicStrikeProc(target) {
     procMagicStrike(t);
 }
 // ===== 連射：發動攻擊時依機率追加 1~3 箭；每箭各自接受命中判定(可未命中/重擊/爆擊)，傷害為該箭結算的 30%；每箭也各判定月光爆裂 =====
-function rapidfireProc(arrowData) {
-    if (player.classicMode) return;   // 🎮 經典模式：停用連射
+function rapidfireProc(arrowData, forceProc, classicOk) {
+    if (player.classicMode && !classicOk) return;   // 🎮 經典模式：一般連射停用；地精靈王的抗拒受擊連射為指定例外
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     if (!wpn || !wpn.rapidfire) return;
-    if (roll(1, 100) > wpn.rapidfire) return;
+    if (!forceProc && roll(1, 100) > wpn.rapidfire) return;
     let _rfN = roll(1, hasMastery('e_rapid') ? 5 : 3);   // 🏅 連射精通：額外箭數 1~3 → 隨機 1~5
     for (let _r = 0; _r < _rfN; _r++) {
         let _alive = [];
@@ -1122,6 +1141,16 @@ function rapidfireProc(arrowData) {
         moonburstProc(_t);   // 熾炎天使弓：每支連射箭矢也有機會觸發月光爆裂（主目標死亡自動轉移）
     }
     renderMobs();
+}
+// 🏺 地精靈王的抗拒：裝備者受到傷害時必定額外發動一次連射；這個受擊觸發在經典模式仍有效。
+function hurtRapidfireProc() {
+    if (!player || player.dead || player.hp <= 0 || !player.eq || !player.eq.wpn) return;
+    let wpn = DB.items[player.eq.wpn.id];
+    if (!wpn || !wpn.hurtRapidfire || !wpn.isBow) return;
+    let arrowData = consumeArrow();
+    if (!arrowData) return;
+    logCombat(`<span class="font-bold" style="color:#fcd34d;text-shadow:0 0 6px #a16207;">【${wpn.n}】</span>承受衝擊後立刻反射連射！`, 'player-special');
+    rapidfireProc(arrowData, true, true);
 }
 // 🛡️ 臂甲判定：臂甲裝在副手(slot:shield)但帶 armguard 旗標；反擊/居合用它區分「真盾牌 vs 臂甲」
 function _isArmguard(shRef) { return !!(shRef && DB.items[shRef.id] && DB.items[shRef.id].armguard); }
@@ -1416,6 +1445,7 @@ function qiguPlayerAttack(target, wpn) {
     target.justHit = (ele !== 'none') ? ele : 'magic';
     if (target.st && target.st.mrhalf > 0) target.st.mrhalf = 0;
     mobWake(target);
+    if (typeof reflectWallOnDamage === 'function') reflectWallOnDamage(target, dmg, 'magic', null);   // 🌑 v3.4.14 血壁空間：奇古獸普攻主擊＝魔法反射（玩家傭兵一致）
     logCombat(`<span class="font-bold" style="color:#c4b5fd;text-shadow:0 0 6px #8b5cf6;">【幻術士】</span>奇古獸對 <span class="${getMobColor(target.lv)}">${target.n}</span> 造成 ${dmg} 點魔法傷害。`, 'magic');
     if (target.curHp <= 0) killMob(mapState.targetIdx); else renderMobs();   // 主擊先結算（避免與下方特效各自 killMob 重複擊殺）
     qiguWeaponProc(target, wpn);        // 奇古獸特效（幻影衝擊/心靈破壞；主擊已擊殺則內部 guard 跳過、自行處理擊殺）
