@@ -24,8 +24,9 @@
 .ability-window-shell {
     position:relative;
     flex:0 0 auto;
-    height:100%;
-    max-width:100%;
+    width:100%;
+    height:auto;
+    max-width:none;
     aspect-ratio:4 / 9;
     container-type:inline-size;
     overflow:hidden;
@@ -128,7 +129,7 @@
     overflow:auto;
     box-sizing:border-box;
     color:#d9d3c5;
-    font:500 2.45cqw/1.5 "Microsoft JhengHei",Arial,sans-serif;
+    font:600 2.8cqw/1.45 "Microsoft JhengHei",Arial,sans-serif;
     text-shadow:0 1px 2px #000;
     user-select:text;
     word-break:normal;

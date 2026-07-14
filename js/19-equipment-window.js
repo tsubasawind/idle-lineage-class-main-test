@@ -380,16 +380,11 @@
             const host = el('tab-content-panel');
             if (!host) return;
             let hostRect = host.getBoundingClientRect();
-            const maxFrameWidth = 366;
-            if (innerWidth <= 768) {
-                const mobileFrameWidth = Math.min(hostRect.width, maxFrameWidth);
-                const mobileHeight = Math.ceil(mobileFrameWidth * 408 / 183);
-                host.style.setProperty('--equipment-panel-height', mobileHeight + 'px');
-                hostRect = host.getBoundingClientRect();
-            }
+            const frameTargetWidth = Math.max(183, hostRect.width);
+            host.style.setProperty('--equipment-panel-height', Math.ceil(frameTargetWidth * 408 / 183) + 'px');
+            hostRect = host.getBoundingClientRect();
             const frameWidth = Math.max(0, Math.min(
                 hostRect.width,
-                maxFrameWidth,
                 hostRect.height * 183 / 408
             ));
             win.style.left = hostRect.left + 'px';
@@ -397,7 +392,7 @@
             win.style.right = 'auto';
             win.style.bottom = 'auto';
             win.style.width = hostRect.width + 'px';
-            win.style.height = hostRect.height + 'px';
+            win.style.height = Math.max(220, Math.min(hostRect.height, innerHeight - hostRect.top - 8)) + 'px';
             frame.style.left = '50%';
             frame.style.top = '0';
             frame.style.setProperty('width', frameWidth + 'px', 'important');
@@ -433,8 +428,8 @@
         const host = el('tab-content-panel');
         if (host) {
             host.classList.toggle('equipment-panel-host', visible);
-            if (!visible || innerWidth > 768) host.style.removeProperty('--equipment-panel-height');
-            else host.style.setProperty('--equipment-panel-height', Math.ceil(Math.min(host.getBoundingClientRect().width, 366) * 408 / 183) + 'px');
+            if (!visible) host.style.removeProperty('--equipment-panel-height');
+            else host.style.setProperty('--equipment-panel-height', Math.ceil(Math.max(183, host.getBoundingClientRect().width) * 408 / 183) + 'px');
         }
         win.classList.add('equipment-window-embedded');
         win.classList.toggle('hidden', !visible);
