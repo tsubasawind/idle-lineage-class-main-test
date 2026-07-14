@@ -27,10 +27,10 @@
     width:100%;
     height:auto;
     max-width:none;
-    aspect-ratio:4 / 9;
+    aspect-ratio:400 / 1020;
     container-type:inline-size;
     overflow:hidden;
-    background:url('../assets/ui/能力.png') center/100% 100% no-repeat;
+    background:url('../assets/ui/能力欄位.png') center/100% 100% no-repeat;
     color:#e8e4dc;
     user-select:none;
 }
@@ -50,10 +50,10 @@
     text-shadow:0 1px 2px #000;
     white-space:nowrap;
 }
-.ability-summary-level{top:9.35%}
-.ability-summary-hp{top:13.05%;color:#e0a0a0}
-.ability-summary-mp{top:16.55%;color:#aebee9}
-.ability-summary-ac{top:20.05%}
+.ability-summary-level{top:8.25%}
+.ability-summary-hp{top:11.55%;color:#e0a0a0}
+.ability-summary-mp{top:14.6%;color:#aebee9}
+.ability-summary-ac{top:17.7%}
 
 .ability-primary-control {
     position:absolute;
@@ -89,47 +89,43 @@
 .ability-primary-control button:hover{border-color:#d5b76d;filter:brightness(1.2)}
 .ability-primary-str,.ability-primary-dex,.ability-primary-con{left:23%}
 .ability-primary-int,.ability-primary-wis,.ability-primary-cha{left:59%}
-.ability-primary-str,.ability-primary-int{top:28.95%}
-.ability-primary-dex,.ability-primary-wis{top:31%}
-.ability-primary-con,.ability-primary-cha{top:33.1%}
+.ability-primary-str,.ability-primary-int{top:25.55%}
+.ability-primary-dex,.ability-primary-wis{top:27.35%}
+.ability-primary-con,.ability-primary-cha{top:29.2%}
 .ability-primary-str{color:#df9b9b}.ability-primary-dex{color:#a9d3c4}.ability-primary-con{color:#d6b18d}
 .ability-primary-int{color:#aebfe9}.ability-primary-wis{color:#c0a9d9}.ability-primary-cha{color:#d7a5be}
 
 .ability-detail-column {
     position:absolute;
-    top:42.65%;
-    height:30.45%;
+    top:37.9%;
+    height:37.45%;
     display:grid;
     grid-template-rows:repeat(15,minmax(0,1fr));
     align-content:stretch;
     color:#eeeae2;
-    font:500 2.65cqw/1 "Microsoft JhengHei",Arial,sans-serif;
+    font:700 3.5cqw/1 "Microsoft JhengHei",Arial,sans-serif;
     text-shadow:0 1px 1px #000;
 }
 .ability-detail-left{left:11.75%;width:36.75%}
 .ability-detail-right{left:56.5%;width:37%}
 .ability-detail-column > div{display:grid;grid-template-columns:74% 26%;align-items:center;min-height:0;white-space:nowrap}
 .ability-detail-column > .ability-detail-spacer{display:block;pointer-events:none}
-.ability-detail-column > div:nth-child(5n+2),
-.ability-detail-column > div:nth-child(5n+3),
-.ability-detail-column > div:nth-child(5n+4),
-.ability-detail-column > div:nth-child(5n+5){transform:translateY(-.32cqw)}
 .ability-detail-column span{padding-left:5%;overflow:hidden;text-overflow:clip}
-.ability-detail-column strong{display:flex;align-items:center;justify-content:flex-end;height:100%;padding-right:8%;box-sizing:border-box;color:#ded9cc;font:600 2.72cqw/1 Arial,sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;letter-spacing:0}
+.ability-detail-column strong{display:flex;align-items:center;justify-content:flex-end;height:100%;padding-right:8%;box-sizing:border-box;color:#ded9cc;font:700 3cqw/1 Arial,sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;letter-spacing:0}
 .ability-hidden-values{display:none}
 
 .ability-buffs {
     position:absolute;
     z-index:4;
     left:6.5%;
-    top:75.7%;
+    top:78.2%;
     width:87%;
-    height:20.8%;
+    height:18.2%;
     padding:2.2% 2.5%;
     overflow:auto;
     box-sizing:border-box;
     color:#d9d3c5;
-    font:600 2.8cqw/1.45 "Microsoft JhengHei",Arial,sans-serif;
+    font:600 3.5cqw/1.45 "Microsoft JhengHei",Arial,sans-serif;
     text-shadow:0 1px 2px #000;
     user-select:text;
     word-break:normal;
