@@ -449,7 +449,7 @@ d.mr += (baseMr + bonusMr);
     if (_shN('暗影') >= 2) { d.extraDmg += 7; }   // 🔧 暗影 2/5：額外傷害+7
     p._setShadow3 = _shN('暗影') >= 3;            // 🔧 暗影 3/5：觸發迴避時恢復 2% HP（迴避處套用）
     p._setShadow5 = _shN('暗影') >= 5;            // 🔧 暗影 5/5：雙擊額外攻擊傷害加倍（×2·procCombo/allyComboAttack 套用）
-    // 🔮 幻覺：2件 魔傷命中回「Lv/10」MP；3件 輔助技耗MP-50%；5件 敵人受非自動攻擊魔法傷害再受一次同傷（不再觸發套裝效果）
+    // 🔮 幻覺：立方、冰雪颶風/火牢 DoT、魔爆、spellProc/procSkill 等免費觸發魔法有效；2件每次法術事件僅回一次MP（AOE不逐目標回）；一般傷害法術、共鳴、反射無效；玩家與傭兵規則相同
     p._setIllusion2 = _shN('幻覺') >= 2;
     p._setIllusion3 = _shN('幻覺') >= 3;
     p._setIllusion5 = _shN('幻覺') >= 5;
@@ -572,6 +572,11 @@ d.mr += (baseMr + bonusMr);
     if(p.buffs.sk_dragon_bloodlust > 0) spdMult *= 0.85;   // 🐉 血之渴望：攻速+15%（與加速/覺醒/變身相乘疊加）
     // 🌟 v3.0.100 玩家攻擊也吃「傭兵提供的幻覺攻擊光環」(化身+10/歐吉+4傷+4命/巫妖+2魔傷)：玩家自身幻覺已由上方 buff 迴圈套入 d·此處只補「傭兵來源」(teamIlluAura(p) 已排除玩家自身避免雙算)·限玩家(_recomputingAlly=false·傭兵走 alliesTick 注入)。傭兵化身狀態變動時由 allyMaintainBuffs 觸發 calcStats 刷新此段。
     if (!_recomputingAlly && typeof teamIlluAura === 'function') { let _mia = teamIlluAura(p); if (_mia) { d.extraDmg += _mia.ed; d.extraHit += _mia.eh; d.magicDmg += _mia.md; } }
+    // 原版方向魔法公式拆分：INT 提供 SP 封頂 33；其餘 extraMp 才列為道具／套裝／增益 SP。
+    // 用未封頂的 INT 原始提供量扣除，避免 INT 100 多出的 2 點被誤判成道具 SP。
+    let _rawIntSp = Math.max(0, getIntExtraMp(d.int));
+    d.intSp = Math.min(33, _rawIntSp);
+    d.itemSp = Math.max(0, (d.extraMp || 0) - _rawIntSp);
     d.spdMult = spdMult;   // 速度倍率（受加速/勇敢藥水/精靈餅乾/變身影響），供自動施法間隔使用
     d.aspd = d.aspd * spdMult;
 
@@ -812,14 +817,14 @@ function enterHiddenArea(hiddenId) {
     changeMap(true);   // force：繞過權限/鑰匙/受控限制；changeMap 讀 #map-select.value=hiddenId 進入並記入 lastBattleMap（供村莊「出發」一鍵返回）
     logCombat(`<span class="font-bold" style="color:#e879f9;text-shadow:0 0 8px #c026d3;">空間的裂隙在你眼前展開，你踏入了 ${HIDDEN_AREA_NAMES[hiddenId] || '隱藏狩獵區域'}。</span>`, 'magic');
 }
-// 🌀 順移按鈕：已學傳送術且 MP 足夠→傳送術；否則消耗瞬間移動卷軸；皆無則提示
+// 🌀 順移按鈕：v3.4.21 改為優先消耗 瞬間移動卷軸；沒有卷軸才判定手動施放傳送術（MP 足夠時）；皆無則提示
 function playerTeleport() {
+    let _it = player.inv.find(i => i.id === 'scroll_teleport' && (i.cnt || 1) >= 1);
+    if (_it) { state._manualTpUntil = (state.ticks || 0) + 50; useItem(_it.uid, false); return; }   // 🕒 手動瞬移後 5 秒內抑制自動瞬移/自動購買
     if (player.skills && player.skills.includes('sk_teleport')) {
         let _sk = DB.skills.sk_teleport;
         if (player.mp >= player.d.getMpCost(_sk.mp, _sk.tier)) { state._manualTpUntil = (state.ticks || 0) + 50; manualCast('sk_teleport'); return; }   // 🕒 手動瞬移後 5 秒內抑制自動瞬移/自動購買
     }
-    let _it = player.inv.find(i => i.id === 'scroll_teleport' && (i.cnt || 1) >= 1);
-    if (_it) { state._manualTpUntil = (state.ticks || 0) + 50; useItem(_it.uid, false); return; }   // 🕒 手動瞬移後 5 秒內抑制自動瞬移/自動購買
     logSys('<span class="text-slate-400">你尚未學會傳送術，也沒有瞬間移動卷軸。</span>');
 }
 

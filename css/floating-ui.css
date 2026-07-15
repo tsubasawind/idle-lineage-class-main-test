@@ -63,17 +63,12 @@
     position:fixed;
     inset:auto;
     z-index:20;
-    overflow-x:hidden;
-    overflow-y:auto;
-    pointer-events:auto;
+    overflow:hidden;
+    pointer-events:none;
     background:#101218;
 }
 .equipment-window-embedded .equipment-window-frame{
-    position:relative!important;
-    left:auto!important;
-    top:auto!important;
-    transform:none!important;
-    margin:0 auto;
+    position:absolute;
     pointer-events:auto;
     filter:none;
     touch-action:auto;
@@ -137,8 +132,9 @@
     filter:blur(.7px);
     pointer-events:none;
 }
-#tab-content-panel.equipment-panel-host{
-    flex:0 0 auto!important;
-    height:var(--equipment-panel-height)!important;
-    min-height:var(--equipment-panel-height)!important;
+@media(max-width:768px){
+    #tab-content-panel.equipment-panel-host{
+        height:var(--equipment-panel-height)!important;
+        min-height:var(--equipment-panel-height)!important;
+    }
 }

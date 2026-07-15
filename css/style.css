@@ -11,7 +11,7 @@
     user-select: none;
 }
 
-/* ===== 經典角色能力資訊欄（assets/ui/能力.png，400×900）===== */
+/* ===== 經典角色能力資訊欄（assets/ui/能力.png，400×825）===== */
 #tab-stats.ability-window-tab {
     padding:0 !important;
     gap:0 !important;
@@ -25,36 +25,15 @@
     position:relative;
     flex:0 0 auto;
     width:100%;
+    max-width:400px;
     height:auto;
-    max-width:none;
-    aspect-ratio:400 / 1020;
+    aspect-ratio:400 / 825;
     container-type:inline-size;
     overflow:hidden;
-    background:url('../assets/ui/能力欄位.png') center/100% 100% no-repeat;
+    background:url('../assets/ui/能力.png') center/100% 100% no-repeat;
     color:#e8e4dc;
     user-select:none;
 }
-.ability-summary-value {
-    position:absolute;
-    left:46.5%;
-    width:36.5%;
-    height:3.2%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:#ddd9cf;
-    font:600 3.15cqw/1 Arial,"Microsoft JhengHei",sans-serif;
-    font-variant-numeric:tabular-nums;
-    font-feature-settings:"tnum" 1;
-    letter-spacing:0;
-    text-shadow:0 1px 2px #000;
-    white-space:nowrap;
-}
-.ability-summary-level{top:8.25%}
-.ability-summary-hp{top:11.55%;color:#e0a0a0}
-.ability-summary-mp{top:14.6%;color:#aebee9}
-.ability-summary-ac{top:17.7%}
-
 .ability-primary-control {
     position:absolute;
     z-index:5;
@@ -89,21 +68,21 @@
 .ability-primary-control button:hover{border-color:#d5b76d;filter:brightness(1.2)}
 .ability-primary-str,.ability-primary-dex,.ability-primary-con{left:23%}
 .ability-primary-int,.ability-primary-wis,.ability-primary-cha{left:59%}
-.ability-primary-str,.ability-primary-int{top:25.55%}
-.ability-primary-dex,.ability-primary-wis{top:27.35%}
-.ability-primary-con,.ability-primary-cha{top:29.2%}
+.ability-primary-str,.ability-primary-int{top:8.2%}
+.ability-primary-dex,.ability-primary-wis{top:11.3%}
+.ability-primary-con,.ability-primary-cha{top:14.4%}
 .ability-primary-str{color:#df9b9b}.ability-primary-dex{color:#a9d3c4}.ability-primary-con{color:#d6b18d}
 .ability-primary-int{color:#aebfe9}.ability-primary-wis{color:#c0a9d9}.ability-primary-cha{color:#d7a5be}
 
 .ability-detail-column {
     position:absolute;
-    top:37.9%;
-    height:37.45%;
+    top:24.05%;
+    height:45.75%;
     display:grid;
     grid-template-rows:repeat(15,minmax(0,1fr));
     align-content:stretch;
     color:#eeeae2;
-    font:700 3.5cqw/1 "Microsoft JhengHei",Arial,sans-serif;
+    font:500 2.65cqw/1 "Microsoft JhengHei",Arial,sans-serif;
     text-shadow:0 1px 1px #000;
 }
 .ability-detail-left{left:11.75%;width:36.75%}
@@ -111,21 +90,26 @@
 .ability-detail-column > div{display:grid;grid-template-columns:74% 26%;align-items:center;min-height:0;white-space:nowrap}
 .ability-detail-column > .ability-detail-spacer{display:block;pointer-events:none}
 .ability-detail-column span{padding-left:5%;overflow:hidden;text-overflow:clip}
-.ability-detail-column strong{display:flex;align-items:center;justify-content:flex-end;height:100%;padding-right:8%;box-sizing:border-box;color:#ded9cc;font:700 3cqw/1 Arial,sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;letter-spacing:0}
+.ability-detail-column .ability-magic-crit-dmg span{position:relative;top:-1px}
+.ability-detail-column strong{display:flex;align-items:center;justify-content:flex-end;height:100%;padding-right:8%;box-sizing:border-box;color:#ded9cc;font:600 2.72cqw/1 Arial,sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;letter-spacing:0}
+.ability-res-fire span{color:#e77d76}
+.ability-res-water span{color:#79a9e8}
+.ability-res-wind span{color:#79c58b}
+.ability-res-earth span{color:#d4ad5d}
 .ability-hidden-values{display:none}
 
 .ability-buffs {
     position:absolute;
     z-index:4;
     left:6.5%;
-    top:78.2%;
+    top:71.1%;
     width:87%;
-    height:18.2%;
+    height:25.7%;
     padding:2.2% 2.5%;
     overflow:auto;
     box-sizing:border-box;
     color:#d9d3c5;
-    font:600 3.5cqw/1.45 "Microsoft JhengHei",Arial,sans-serif;
+    font:600 3.2cqw/1.55 "Microsoft JhengHei",Arial,sans-serif;
     text-shadow:0 1px 2px #000;
     user-select:text;
     word-break:normal;
@@ -137,7 +121,7 @@
 .ability-respec-points {
     position:absolute;
     left:46%;
-    top:31.55%;
+    top:12.35%;
     width:9%;
     height:3.05%;
     display:flex;
@@ -184,6 +168,48 @@
         /* 🔤 表單控制項（下拉選單/輸入框/按鈕）強制繼承全站字型——native <select> 的選項清單預設不繼承，
            會挑到不同的中文後備字，導致「展開的選項」字體與「關閉的值/全站文字」不一致。釘住同一套字型修正之。 */
         select, option, optgroup, input, textarea, button { font-family: inherit; }
+        /* 原生下拉選單備援：即使未啟用自訂選單，也維持遊戲的深色介面。 */
+        select { color-scheme: dark; }
+        select option, select optgroup {
+            background-color: #111827;
+            color: #dbeafe;
+        }
+        select option:checked {
+            background-color: #1d4ed8;
+            color: #ffffff;
+        }
+        /* 血盟盟主頭像：沿用左上角色狀態框約 340:250 的橫向比例，依詩蒂／特羅斯皆從人物上方裁切。 */
+        .pledge-leader-portrait {
+            width: 240px;
+            aspect-ratio: 340 / 250;
+            box-sizing: border-box;
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 8px;
+            border: 4px solid #92400e;
+            border-radius: 8px;
+            outline: 1px solid rgba(180, 83, 9, 0.4);
+            outline-offset: 4px;
+            background: rgba(2, 6, 23, 0.4);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.9);
+        }
+        .pledge-leader-portrait-img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            object-position: center top;
+            border-radius: 4px;
+            pointer-events: none;
+            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.8));
+        }
+        @media (max-width: 600px) {
+            .pledge-leader-layout { flex-direction: column !important; }
+            .pledge-leader-portrait { width: min(100%, 340px); align-self: center; }
+        }
         /* 🖥️ 打包版自訂下拉彈出層（.cdd-pop·見 js/11 openCustomSelectPopup）：Electron 原生 <select> 的彈出選單間距過擠且 padding/行高不可調，
            故僅打包版(html.pkg-build)攔截下拉、改用此自訂彈出層→間距完全可控、與遊戲深色主題一致。網頁版 <html> 無 .pkg-build → 維持原生選單、完全不受影響。 */
         .cdd-pop { position: fixed; z-index: 9999; background: #1e293b; border: 1px solid #64748b; border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.7); padding: 5px; max-height: 60vh; overflow-y: auto; }
@@ -815,6 +841,19 @@
             -webkit-text-stroke:1.35px #260403;
             text-shadow:0 1px 0 #260403,0 3px 3px rgba(0,0,0,.96),0 0 4px rgba(255,59,48,.55);
         }
+        .vfx-dmg-tag {
+            display:inline-block;
+            margin-right:.3em;
+            font-family:"Microsoft JhengHei UI","Microsoft JhengHei","Segoe UI",sans-serif;
+            font-size:.58em;
+            font-weight:900;
+            letter-spacing:.05em;
+            vertical-align:.14em;
+            -webkit-text-stroke:.6px rgba(5,5,5,.96);
+            paint-order:stroke fill;
+            text-shadow:0 1px 1px rgba(0,0,0,.95);
+        }
+        .vfx-dmg-value { display:inline-block; }
         @keyframes vfxFloat {
             0%   { opacity: 0; transform: translate(-50%,-40%) scale(.55); }
             18%  { opacity: 1; transform: translate(-50%,-95%) scale(1.06); }
@@ -997,8 +1036,9 @@
 #login-art-stage { position:relative; width:min(100vw,calc(100vh * 4 / 3)); aspect-ratio:4 / 3; flex:0 0 auto; overflow:hidden; background:#050505; box-shadow:0 0 45px #000; }
 #login-bg-image { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; user-select:none; }
 #login-anim-image { position:absolute; left:0; top:63.75%; width:78.28125%; height:36.25%; object-fit:fill; pointer-events:none; user-select:none; }
-#login-title-layer { position:absolute; z-index:3; left:3.1%; top:14%; width:30.8%; color:#f7df91; text-shadow:0 2px 4px #000,0 0 6px #000; }
-#login-title-layer h1 { margin:0 0 2.5%; font-size:clamp(14px,2.05vw,31px); line-height:1.15; color:#f5d46c; }
+#login-title-layer { position:absolute; z-index:3; left:3.1%; top:14%; width:30.8%; color:#f7df91; text-shadow:0 2px 4px #000,0 0 6px #000; container-type:inline-size; }
+/* 🔤 v3.4.22 標題字級改用 cqw（跟隨標題框寬度）而非 vw：修正「寬而矮視窗下框縮小但字仍撐到 vw 上限→標題超框」；並整體略縮 */
+#login-title-layer h1 { margin:0 0 2.5%; font-size:clamp(13px,8cqw,30px); line-height:1.15; color:#f5d46c; }
 #login-title-layer p { margin:0; font-size:clamp(9px,1.05vw,16px); color:#e7d7b5; }
 #main-menu { position:absolute; z-index:4; left:50.4%; top:48.5%; width:25%; margin:0 !important; display:flex; flex-direction:column; align-items:stretch; gap:clamp(10px,1.45vw,22px) !important; }
 #main-menu.hidden { display:none !important; }
@@ -2437,6 +2477,41 @@ button.classic-skill-cell { cursor:pointer; }
     display: flex; flex-direction: column;
     background: #111925fc; border: 3px solid #8b6a2f; border-radius: 13px;
     box-shadow: 0 22px 48px rgba(0,0,0,.85);
+}
+/* 村莊 NPC 浮動視窗表頭：限制左右內容尺寸，長名稱不再把關閉鈕推出框外。 */
+#town-interaction-header {
+    min-width: 0;
+    gap: 12px;
+    padding: 10px 12px !important;
+    margin-bottom: 10px !important;
+}
+#town-interaction-heading {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+    overflow: hidden;
+}
+#interaction-npc-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 20px !important;
+    line-height: 1.25 !important;
+}
+#interaction-npc-title {
+    flex: 0 0 auto;
+    margin: 0 !important;
+    white-space: nowrap;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+}
+#town-interaction-close {
+    flex: 0 0 auto;
+    min-width: 64px;
+    padding: 6px 12px !important;
+    font-size: 14px !important;
+    line-height: 1.25 !important;
 }
 
 /* ===== Mobile floating-window bounds (desktop remains untouched) ===== */

@@ -743,6 +743,19 @@ function equipItem(item) {
         returnEquipToInv('wpn');
         logSys(`裝備盾牌，已卸下雙手武器。`);
     }
+    // ⚔️ v3.4.21 副手位置互斥：戰士副手武器（迅猛雙斧 offwpn）與 盾牌／臂甲 共用副手位置，只能擇一裝備
+    if (slot === 'offwpn' && player.eq.shield) {   // 裝副手武器 → 卸下盾牌/臂甲
+        if (isEquipCursed('shield')) { logSys('<span class="text-red-400 font-bold">被詛咒的副手裝備無法卸下，無法持用副手武器！</span>'); return; }
+        let _sd = DB.items[player.eq.shield.id];
+        let _snm = (_sd && _sd.armguard) ? '臂甲' : '盾牌';
+        returnEquipToInv('shield');
+        logSys(`副手改持武器，已卸下${_snm}。`);
+    } else if (slot === 'shield' && player.eq.offwpn) {   // 裝盾牌/臂甲 → 卸下副手武器
+        if (isEquipCursed('offwpn')) { logSys('<span class="text-red-400 font-bold">被詛咒的副手武器無法卸下，無法裝備' + (d.armguard ? '臂甲' : '盾牌') + '！</span>'); return; }
+        let _on = DB.items[player.eq.offwpn.id];
+        returnEquipToInv('offwpn');
+        logSys(`副手改裝${d.armguard ? '臂甲' : '盾牌'}，已卸下副手武器${_on ? ' ' + _on.n : ''}。`);
+    }
 
     let invItem = player.inv.find(i => i.uid === item.uid);
     if (!invItem) return;
@@ -1173,12 +1186,6 @@ function _updateUIImpl() {
     document.getElementById('bar-exp').style.width = `${Math.min(100, pct)}%`;
     try { if (typeof renderSquadPanel === 'function') renderSquadPanel(); } catch (e) {}   // 🤝 協力傭兵隊伍面板：每幀同步血/魔/經驗條（名單變動才重建結構）
 
-    // 經典能力資訊欄上半部：等級、體力、魔力、防禦。
-    { let _el = document.getElementById('dt-level'); if (_el) _el.innerText = player.lv;
-      _el = document.getElementById('dt-hp'); if (_el) _el.innerText = `${Math.floor(player.hp)}/${Math.floor(player.mhp)}`;
-      _el = document.getElementById('dt-mp'); if (_el) _el.innerText = `${Math.floor(player.mp)}/${Math.floor(player.mmp)}`;
-      _el = document.getElementById('dt-ac'); if (_el) _el.innerText = player.d.ac; }
-
     if (_respec) {   // 🕯️ 回憶蠟燭配點重置中：六大屬性顯示「Lv1 基礎 + 草稿配點」（確認後才真正套用）
         let _b = createBase[player.cls];
         ['str','dex','con','int','wis','cha'].forEach(s => { let el = document.getElementById('dt-'+s); if (el) el.innerText = _b[s] + _respec.draft[s]; });
@@ -1230,12 +1237,12 @@ function _updateUIImpl() {
       _el = document.getElementById('dt-movespeed'); if (_el) _el.innerText = `${100 + (player.d.moveSpeedPct || 0)}%`;
       _el = document.getElementById('dt-mpkill'); if (_el) _el.innerText = (typeof getWisMpOnKill === 'function' ? getWisMpOnKill(player.d.wis || 0) : 0);
       _el = document.getElementById('dt-mr'); if (_el) _el.innerText = player.d.mr || 0;
-      _el = document.getElementById('dt-resnone'); if (_el) _el.innerText = `${effResistPct(player.d.resNone || 0)}%`; }
+      _el = document.getElementById('dt-resnone'); if (_el) _el.innerText = Math.round(player.d.resNone || 0); }
     if(document.getElementById('dt-resfire')) {
-        document.getElementById('dt-resfire').innerText  = `${effResistPct(player.d.resFire  || 0)}%`;   // 🔧 顯示有效減傷%（>50 每+5才+1%）
-        document.getElementById('dt-reswater').innerText = `${effResistPct(player.d.resWater || 0)}%`;
-        document.getElementById('dt-reswind').innerText  = `${effResistPct(player.d.resWind  || 0)}%`;
-        document.getElementById('dt-researth').innerText = `${effResistPct(player.d.resEarth || 0)}%`;
+        document.getElementById('dt-resfire').innerText  = Math.round(player.d.resFire  || 0);
+        document.getElementById('dt-reswater').innerText = Math.round(player.d.resWater || 0);
+        document.getElementById('dt-reswind').innerText  = Math.round(player.d.resWind  || 0);
+        document.getElementById('dt-researth').innerText = Math.round(player.d.resEarth || 0);
     }
     
     renderStatusEffects();
