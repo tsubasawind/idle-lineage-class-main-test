@@ -1,1 +1,0 @@
-{"version":1,"unitId":"kent_blue_shark_mage","sourceName":"藍色鯊魚法師","framePattern":"{action}_{frame}.png","actions":["idle","attack","skill","hurt","death"],"variants":["normal","s"]}

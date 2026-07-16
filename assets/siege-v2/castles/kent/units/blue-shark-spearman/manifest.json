@@ -1,1 +1,0 @@
-{"version":1,"unitId":"kent_blue_shark_spearman","sourceName":"藍色鯊魚槍兵","framePattern":"{action}_{frame}.png","actions":["idle","attack","hurt","death"],"variants":["normal","s"]}
